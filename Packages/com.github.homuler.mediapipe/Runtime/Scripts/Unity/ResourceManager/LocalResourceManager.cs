@@ -5,6 +5,7 @@
 // https://opensource.org/licenses/MIT.
 
 #if UNITY_EDITOR
+using System;
 using System.Collections;
 using System.IO;
 using UnityEditor;
@@ -20,7 +21,11 @@ namespace Mediapipe.Unity
     private static readonly string _AssetPathRoot = "Packages/com.github.homuler.mediapipe/PackageResources/MediaPipe";
     private static string _CachePathRoot;
 
-    public LocalResourceManager(string path) : base(PathToResourceAsFile, GetResourceContents)
+    public override PathResolver pathResolver => PathToResourceAsFile;
+
+    public override ResourceProvider resourceProvider => GetResourceContents;
+
+    public LocalResourceManager(string path) : base()
     {
       // It's safe to update static members because at most one RsourceManager can be initialized.
       _RelativePath = path;
@@ -61,19 +66,41 @@ namespace Mediapipe.Unity
       Logger.LogVerbose(_TAG, $"{name} is saved to {destFilePath} (length={asset.bytes.Length})");
     }
 
+    [AOT.MonoPInvokeCallback(typeof(PathResolver))]
     protected static string PathToResourceAsFile(string assetPath)
     {
       var assetName = GetAssetNameFromPath(assetPath);
       return GetCachePathFor(assetName);
     }
 
-    protected static byte[] GetResourceContents(string path)
+    [AOT.MonoPInvokeCallback(typeof(ResourceProvider))]
+    protected static bool GetResourceContents(string path, IntPtr dst)
     {
       // TODO: try AsyncReadManager
-      Logger.LogDebug($"{path} is requested");
+      try
+      {
+        Logger.LogDebug($"{path} is requested");
 
-      var cachePath = PathToResourceAsFile(path);
-      return File.ReadAllBytes(cachePath);
+        var cachePath = PathToResourceAsFile(path);
+        if (!File.Exists(cachePath))
+        {
+          Logger.LogError(_TAG, $"{cachePath} is not found");
+          return false;
+        }
+
+        var asset = File.ReadAllBytes(cachePath);
+        using (var srcStr = new StdString(asset))
+        {
+          srcStr.Swap(new StdString(dst, false));
+        }
+
+        return true;
+      }
+      catch (Exception e)
+      {
+        Logger.LogException(e);
+        return false;
+      }
     }
 
     private static string GetAssetPathFor(string assetName)

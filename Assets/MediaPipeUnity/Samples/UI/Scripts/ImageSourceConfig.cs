@@ -144,11 +144,15 @@ namespace Mediapipe.Unity.UI
 
       var imageSource = ImageSourceProvider.ImageSource;
       _isHorizontallyFlippedInput.isOn = imageSource.isHorizontallyFlipped;
+
       _isHorizontallyFlippedInput.onValueChanged.AddListener(delegate
       {
         imageSource.isHorizontallyFlipped = _isHorizontallyFlippedInput.isOn;
         _isChanged = true;
       });
+
+      //2023/7/5(水)追加
+      _isHorizontallyFlippedInput.isOn = true;
     }
   }
 }

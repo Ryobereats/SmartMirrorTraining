@@ -18,6 +18,19 @@ namespace Mediapipe.Unity.PoseTracking
     [SerializeField] private MaskAnnotationController _segmentationMaskAnnotationController;
     [SerializeField] private NormalizedRectAnnotationController _roiFromLandmarksAnnotationController;
 
+
+    //2023/7/4(火)追加
+    private PoseLandmarkListAnnotation _plListAnnotation;
+
+    private void Start()
+    {
+      _plListAnnotation = PoseLandmarkListAnnotation.Instance;
+    }
+
+    private void Update()
+    {
+      //Debug.Log(_plListAnnotation.headPos + "です！！！！");
+    }
     public PoseTrackingGraph.ModelComplexity modelComplexity
     {
       get => graphRunner.modelComplexity;
@@ -62,9 +75,9 @@ namespace Mediapipe.Unity.PoseTracking
 
     protected override void OnStartRun()
     {
-      if (!runningMode.IsSynchronous())
+      if (!runningMode.IsSynchronous())//synchronous:同期
       {
-        graphRunner.OnPoseDetectionOutput += OnPoseDetectionOutput;
+        graphRunner.OnPoseDetectionOutput += OnPoseDetectionOutput;//detection:検出
         graphRunner.OnPoseLandmarksOutput += OnPoseLandmarksOutput;
         graphRunner.OnPoseWorldLandmarksOutput += OnPoseWorldLandmarksOutput;
         graphRunner.OnSegmentationMaskOutput += OnSegmentationMaskOutput;

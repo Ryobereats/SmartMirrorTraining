@@ -20,6 +20,7 @@ namespace Mediapipe.Unity
     [SerializeField] private Color _leftLandmarkColor = Color.green;
     [SerializeField] private Color _rightLandmarkColor = Color.green;
 
+
     public enum Hand
     {
       Left,

@@ -75,14 +75,14 @@ node {
 }
 ";
 
-    private const string _FaceDetectionShortRangeConfigText = @"
-input_stream: ""image""
-input_stream: ""roi""
+    private const string _FaceDetectionShortRangeCommonConfigText = @"
+input_stream: ""detection_tensors""
+input_stream: ""transform_matrix""
 
 node {
-  calculator: ""FaceDetectionShortRange""
-  input_stream: ""IMAGE:image""
-  input_stream: ""ROI:roi""
+  calculator: ""FaceDetectionShortRangeCommon""
+  input_stream: ""TENSORS:detection_tensors""
+  input_stream: ""MATRIX:transform_matrix""
   output_stream: ""DETECTIONS:detections""
 }
 ";
@@ -320,13 +320,12 @@ node {
     {
       using (var config = new ValidatedGraphConfig())
       {
-        var originalConfig = CalculatorGraphConfig.Parser.ParseFromTextFormat(_FaceDetectionShortRangeConfigText);
+        var originalConfig = CalculatorGraphConfig.Parser.ParseFromTextFormat(_FaceDetectionShortRangeCommonConfigText);
         config.Initialize(originalConfig).AssertOk();
         var canonicalizedConfig = config.Config();
 
-        Assert.AreEqual(84, originalConfig.CalculateSize());
-        // 2167 on CPU, 2166 on GPU
-        Assert.AreEqual(2166, canonicalizedConfig.CalculateSize(), 1);
+        Assert.AreEqual(145, originalConfig.CalculateSize());
+        Assert.AreEqual(936, canonicalizedConfig.CalculateSize());
       }
     }
     #endregion

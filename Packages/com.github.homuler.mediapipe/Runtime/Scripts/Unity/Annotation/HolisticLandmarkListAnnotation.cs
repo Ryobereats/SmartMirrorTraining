@@ -66,6 +66,9 @@ namespace Mediapipe.Unity
       {
         mask ^= PoseLandmarkListAnnotation.BodyParts.RightHand;
       }
+
+      
+
       _faceLandmarkListAnnotation.Draw(faceLandmarks, visualizeZ, circleVertices);
       _poseLandmarkListAnnotation.Draw(poseLandmarks, mask, visualizeZ);
       _leftHandLandmarkListAnnotation.Draw(leftHandLandmarks, visualizeZ);
