@@ -11,6 +11,11 @@ using System.Text;
 
 using Mediapipe.Unity;
 
+//2023/9/6水追加
+using MathNet.Numerics;
+//using System.Numerics;
+using MathNet.Numerics.LinearAlgebra;
+
 public class GameManager : MonoBehaviour
 {
   private STATE _state;
@@ -125,7 +130,9 @@ public class GameManager : MonoBehaviour
     //2023/7/24(月)追加
     if (isGetArray)//ミラーキャリブレーション行列が算出できたらCSVファイルに縦書きで行列の要素を出力する
     {
-      string folderPath = "C:/Users/ig/AppData/LocalLow/DefaultCompany/MediaPipeUnityPlugin/SmartMirror/MirrorCalibration";
+      Debug.Log("isGetArrayがtrueになりました");
+      //string folderPath = "C:/Users/ig/AppData/LocalLow/DefaultCompany/MediaPipeUnityPlugin/SmartMirror/MirrorCalibration";
+      string folderPath = "C:/Users/inoue/ig/SmartMirror/MirrorCalibration";
       string fileName = "CalibrationArray";
       SaveTaskData(folderPath, fileName, _mirrorCalibArray);
 
@@ -152,6 +159,13 @@ public class GameManager : MonoBehaviour
     posList.Add(point2.transform.position);
     posList.Add(point3.transform.position);
     posList.Add(point4.transform.position);
+
+    ////2023/9/11月追加
+    //posList.Clear();
+    //posList.Add(new Vector3(50,50,90));
+    //posList.Add(new Vector3(50,400,90));
+    //posList.Add(new Vector3(500,400,90));
+    //posList.Add(new Vector3(500,50,90));
   }
 
   //2023/7/18(火)追加
@@ -163,10 +177,10 @@ public class GameManager : MonoBehaviour
       Debug.Log(i + "番目のMpPosListは" + MpPosList[i] + "です！！");
     }
 
-    List<float> x = new List<float>(){ RealPosList[0][0],RealPosList[1][0],RealPosList[2][0],RealPosList[3][0]};
-    List<float> y = new List<float>(){ RealPosList[0][1],RealPosList[1][1],RealPosList[2][1],RealPosList[3][1]};
-    List<float> X = new List<float>(){ MpPosList[0][0], MpPosList[1][0], MpPosList[2][0], MpPosList[3][0]};
-    List<float> Y = new List<float>(){ MpPosList[0][1], MpPosList[1][1], MpPosList[2][1], MpPosList[3][1]};
+    List<float> X = new List<float>(){ RealPosList[0][0],RealPosList[1][0],RealPosList[2][0],RealPosList[3][0]};
+    List<float> Y = new List<float>(){ RealPosList[0][1],RealPosList[1][1],RealPosList[2][1],RealPosList[3][1]};
+    List<float> x = new List<float>(){ MpPosList[0][0], MpPosList[1][0], MpPosList[2][0], MpPosList[3][0]};
+    List<float> y = new List<float>(){ MpPosList[0][1], MpPosList[1][1], MpPosList[2][1], MpPosList[3][1]};
     
     for(int i = 0; i < RealPosList.Count; i++)
     {
@@ -183,10 +197,18 @@ public class GameManager : MonoBehaviour
       {    0,    0,   0, x[2], y[2],   1, -Y[2] * x[2], -Y[2] * y[2] },
       {x[3], y[3],   1,    0,    0,   0, -X[3] * x[3], -X[3] * y[3] },
       {    0,    0,   0, x[3], y[3],   1, -Y[3] * x[3], -Y[3] * y[3]} };
-    Debug.Log("Lの値は" + L + "です！！");
     
+    for(int i=0;i < L.GetLength(0); i++)
+    {
+      for(int j = 0; j < L.GetLength(1); j++)
+      {
+        Debug.Log("Lの" + i + "," + j + "番目の要素は" + L[i, j] + "です！！");
+      }
+    }
 
-    float[,] R = new float[,] { { X[0] },
+
+    float[,] R = new float[,]
+    { { X[0] },
       { Y[0] },
       { X[1] },
       { Y[1] },
@@ -195,7 +217,24 @@ public class GameManager : MonoBehaviour
       { X[3] },
       { Y[3] } };
 
-    Debug.Log("Rの値は" + R + "です！！");
+    ////2023/9/10変更（Rの中身をRealPosListに直す）
+    //float[,] R = new float[,] 
+    //{ { x[0] },
+    //  { y[0] },
+    //  { x[1] },
+    //  { y[1] },
+    //  { x[2] },
+    //  { y[2] },
+    //  { x[3] },
+    //  { y[3] } };
+
+    for (int i = 0; i < R.GetLength(0); i++)
+    {
+      for (int j = 0; j < R.GetLength(1); j++)
+      {
+        Debug.Log("Rの" + i + "," + j + "番目の要素は" + R[i, j] + "です！！");
+      }
+    }
 
     Ans = Solve(L, R);
     for(int i = 0; i < Ans.GetLength(0); i++)
@@ -219,114 +258,80 @@ public class GameManager : MonoBehaviour
     return ans;
   }
 
+  //2023/9/6水変更
   private float[,] CalcInverseMatrix(float[,] A)//逆行列を求める関数
   {
-
-    int n = A.GetLength(0);
-    int m = A.GetLength(1);
-
-    float[,] invA = new float[n, m];
-
-    if (n == m)
+    float[,] InverseMatrix = new float[A.GetLength(0),A.GetLength(1)];
+    var Matrix = Matrix<float>.Build.DenseOfArray(new float[,]
+                {
+                    {A[0,0],A[0,1],A[0,2],A[0,3],A[0,4],A[0,5],A[0,6],A[0,7]},
+                    {A[1,0],A[1,1],A[1,2],A[1,3],A[1,4],A[1,5],A[1,6],A[1,7]},
+                    {A[2,0],A[2,1],A[2,2],A[2,3],A[2,4],A[2,5],A[2,6],A[2,7]},
+                    {A[3,0],A[3,1],A[3,2],A[3,3],A[3,4],A[3,5],A[3,6],A[3,7]},
+                    {A[4,0],A[4,1],A[4,2],A[4,3],A[4,4],A[4,5],A[4,6],A[4,7]},
+                    {A[5,0],A[5,1],A[5,2],A[5,3],A[5,4],A[5,5],A[5,6],A[5,7]},
+                    {A[6,0],A[6,1],A[6,2],A[6,3],A[6,4],A[6,5],A[6,6],A[6,7]},
+                    {A[7,0],A[7,1],A[7,2],A[7,3],A[7,4],A[7,5],A[7,6],A[7,7]},
+                }
+            );
+    for(int i = 0; i < A.GetLength(0); i++)
     {
-
-      int max;
-      float tmp;
-
-      for (int j = 0; j < n; j++)
+      for(int j = 0; j < A.GetLength(1); j++)
       {
-        for (int i = 0; i < n; i++)
-        {
-          invA[j, i] = (i == j) ? 1 : 0;
-        }
+        InverseMatrix[i,j] = Matrix.Inverse()[i,j];
       }
-
-      for (int k = 0; k < n; k++)
-      {
-        max = k;
-        for (int j = k + 1; j < n; j++)
-        {
-          if (Math.Abs(A[j, k]) > Math.Abs(A[max, k]))
-          {
-            max = j;
-          }
-        }
-
-        if (max != k)
-        {
-          for (int i = 0; i < n; i++)
-          {
-            // 入力行列側
-            tmp = A[max, i];
-            A[max, i] = A[k, i];
-            A[k, i] = tmp;
-            // 単位行列側
-            tmp = invA[max, i];
-            invA[max, i] = invA[k, i];
-            invA[k, i] = tmp;
-          }
-        }
-
-        tmp = A[k, k];
-
-        for (int i = 0; i < n; i++)
-        {
-          A[k, i] /= tmp;
-          invA[k, i] /= tmp;
-        }
-
-        for (int j = 0; j < n; j++)
-        {
-          if (j != k)
-          {
-            tmp = A[j, k] / A[k, k];
-            for (int i = 0; i < n; i++)
-            {
-              A[j, i] = A[j, i] - A[k, i] * tmp;
-              invA[j, i] = invA[j, i] - invA[k, i] * tmp;
-            }
-          }
-        }
-
-      }
-      //逆行列が計算できなかった時の措置
-      for (int j = 0; j < n; j++)
-      {
-        for (int i = 0; i < n; i++)
-        {
-          if (float.IsNaN(invA[j, i]))
-          {
-            Console.WriteLine("Error : Unable to compute inverse matrix");
-            invA[j, i] = 0;//ここでは，とりあえずゼロに置き換えることにする
-          }
-        }
-      }
-      return invA;
     }
-    else
-    {
-      Console.WriteLine("Error : It is not a square matrix");
-      return invA;
-    }
+    return InverseMatrix;
   }
 
-
+  //2023/9/6水変更
   float[,] MultiplyMatrix(float[,] A, float[,] B)//行列の掛け算
   {
+    float[,] result2 = new float[B.GetLength(0), B.GetLength(1)];
+    var MatrixA = Matrix<float>.Build.DenseOfArray(new float[,]
+                {
+                    {A[0,0],A[0,1],A[0,2],A[0,3],A[0,4],A[0,5],A[0,6],A[0,7]},
+                    {A[1,0],A[1,1],A[1,2],A[1,3],A[1,4],A[1,5],A[1,6],A[1,7]},
+                    {A[2,0],A[2,1],A[2,2],A[2,3],A[2,4],A[2,5],A[2,6],A[2,7]},
+                    {A[3,0],A[3,1],A[3,2],A[3,3],A[3,4],A[3,5],A[3,6],A[3,7]},
+                    {A[4,0],A[4,1],A[4,2],A[4,3],A[4,4],A[4,5],A[4,6],A[4,7]},
+                    {A[5,0],A[5,1],A[5,2],A[5,3],A[5,4],A[5,5],A[5,6],A[5,7]},
+                    {A[6,0],A[6,1],A[6,2],A[6,3],A[6,4],A[6,5],A[6,6],A[6,7]},
+                    {A[7,0],A[7,1],A[7,2],A[7,3],A[7,4],A[7,5],A[7,6],A[7,7]},
+                }
+            );
+    //var MatrixB = Matrix<float>.Build.DenseOfArray(new float[,]
+    //            {
+    //                {B[0,0],
+    //                 B[1,0],
+    //                 B[2,0],
+    //                 B[3,0],
+    //                 B[4,0],
+    //                 B[5,0],
+    //                 B[6,0],
+    //                 B[7,0]},
+    //            }
+    //        );
+    
+    var MatrixB = Matrix<float>.Build.DenseOfArray(new float[,]
+                {
+                     {B[0,0] },
+                     { B[1,0] },
+                     { B[2,0] },
+                     { B[3,0] },
+                     { B[4,0] },
+                     { B[5,0] },
+                     { B[6,0] },
+                     { B[7,0]} 
+                }
+            );
+    var result1 = MatrixA.Multiply(MatrixB);
 
-    float[,] product = new float[A.GetLength(0), B.GetLength(1)];
-
-    for (int i = 0; i < A.GetLength(0); i++)
+    for( int i = 0; i < result2.GetLength(0); i++)
     {
-      for (int j = 0; j < B.GetLength(1); j++)
-      {
-        for (int k = 0; k < A.GetLength(1); k++)
-        {
-          product[i, j] += A[i, k] * B[k, j];
-        }
-      }
+      result2[i, 0] = result1[i, 0];
     }
-    return product;
+    return result2;
   }
   //float[,] MultiplyMatrix(float[,] A, float[,] B)//行列の掛け算
   //{
@@ -376,6 +381,23 @@ public class GameManager : MonoBehaviour
     }
 
     _mirrorCalibCountDownText.text = " 計測完了！！";
+
+    //2023/9/10修正・追加(以下４行)
+    _mpLeftWristPos.x *= -1;
+    _mpRightWristPos.x *= -1;
+    _mpLeftKneePos.x *= -1;
+    _mpRightKneePos.x *= -1;
+    
+    ////2023/9/11修正・追加(以下8行)
+    //_mpLeftWristPos.x = 100;
+    //_mpLeftWristPos.y = 50;
+    //_mpRightWristPos.x = 120;
+    //_mpRightWristPos.y = 350;
+    //_mpLeftKneePos.x = 500;
+    //_mpLeftKneePos.y = 500;
+    //_mpRightKneePos.x = 600;
+    //_mpRightKneePos.y = 200;
+
     _mpLandmarkList.Add(_mpLeftWristPos);
     _mpLandmarkList.Add(_mpRightWristPos);
     _mpLandmarkList.Add(_mpLeftKneePos);

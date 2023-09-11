@@ -400,7 +400,8 @@ namespace Mediapipe.Unity
       if (GameObject.Find("MirrorCalibrationCompleted"))
       {
         Debug.Log("今からCSVを読み取ります1");
-        string filePath = "C:/Users/ig/AppData/LocalLow/DefaultCompany/MediaPipeUnityPlugin/SmartMirror/MirrorCalibration/CalibrationArray.csv";
+        //string filePath = "C:/Users/ig/AppData/LocalLow/DefaultCompany/MediaPipeUnityPlugin/SmartMirror/MirrorCalibration/CalibrationArray.csv";
+        string filePath = "C:/Users/inoue/ig/SmartMirror/MirrorCalibration/CalibrationArray.csv";
         float[] lines = ReadCsv(filePath);
         for (int i = 0; i < 33; i++)
         {
@@ -524,6 +525,7 @@ namespace Mediapipe.Unity
       DateTime now = DateTime.Now;
       string nowTime = now.Year.ToString() + "_" + now.Month.ToString() + "_" + now.Day.ToString() + "__" + now.Hour.ToString() + "_" + now.Minute.ToString() + "_" + now.Second.ToString();
       string folderPath = Application.persistentDataPath + "/" + "SmartMirror" + "/" + nowTime;
+      Debug.Log(folderPath);
       return folderPath;
     }
 
