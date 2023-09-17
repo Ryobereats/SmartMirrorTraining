@@ -15,6 +15,7 @@ using Mediapipe.Unity;
 using MathNet.Numerics;
 //using System.Numerics;
 using MathNet.Numerics.LinearAlgebra;
+using static Mediapipe.ImageFrame;
 
 public class GameManager : MonoBehaviour
 {
@@ -69,23 +70,44 @@ public class GameManager : MonoBehaviour
 
   [SerializeField] private TextMeshProUGUI _countDownText;
   [SerializeField] private TextMeshProUGUI _explanationText;
-  [SerializeField] private Button _calibrationButton;
+  [SerializeField] private GameObject _calibrationButton;
   [SerializeField] private GameObject coin;
   [SerializeField] private GameObject Parent;
   [SerializeField] private Material keepCoinColor;
   [SerializeField] private float squat_speed;
 
   //2023/7/18(火)追加
-  [SerializeField] private GameObject HeadCalibPoint;
-  [SerializeField] private GameObject LeftWristCalibPoint;
-  [SerializeField] private GameObject RightWristCalibPoint;
-  [SerializeField] private GameObject LeftKneeCalibPoint;
-  [SerializeField] private GameObject RightKneeCalibPoint;
+  [SerializeField] private GameObject _HeadCalibPoint;
+  [SerializeField] private GameObject _LeftWristCalibPoint;
+  [SerializeField] private GameObject _RightWristCalibPoint;
+  [SerializeField] private GameObject _LeftKneeCalibPoint;
+  [SerializeField] private GameObject _RightKneeCalibPoint;
 
   //2023/7/19(水)追加
   [SerializeField] private TextMeshProUGUI _mirrorCalibCountDownText;
   [SerializeField] private TextMeshProUGUI _mirrorCalibExplanationText;
-  [SerializeField] private Button _mirrorCalibButton;
+  [SerializeField] private GameObject _mirrorCalibButton;
+
+  //2023/9/11(月)追加
+  [SerializeField] private GameObject _Header;
+  [SerializeField] private GameObject _Footer;
+  //[SerializeField] private GameObject CalibrationButton;
+  //[SerializeField] private GameObject MirrorCalibButton;
+  [SerializeField] private GameObject _GameStartButton;
+  //[SerializeField] private GameObject explanationText;
+  //[SerializeField] private GameObject countdownText;
+  //[SerializeField] private GameObject MiirorCalibExplanationText;
+  //[SerializeField] private GameObject MirrorCalibCountdownText;
+  [SerializeField] private TextMeshProUGUI _MirrorCalibText;
+  [SerializeField] private TextMeshProUGUI _LeftWristText;
+  [SerializeField] private TextMeshProUGUI _RightWristText;
+  [SerializeField] private TextMeshProUGUI _LeftKneeText;
+  [SerializeField] private TextMeshProUGUI _RightKneeText;
+  [SerializeField] private TextMeshProUGUI _TrainingTypeText;
+  [SerializeField] private TMP_Dropdown _TrainingTypeDropdown;
+  [SerializeField] private GameObject _Horizon;//ok
+  [SerializeField] private GameObject _Vertical;//ok
+  
 
   private void Awake()
   {
@@ -102,7 +124,7 @@ public class GameManager : MonoBehaviour
     if (trainingTypes == 1) gameCountDownTime = 5;
     _mirrorCalibPointList = new List<Vector3>();
     _mpLandmarkList = new List<Vector3>();
-    AddElement(_mirrorCalibPointList, LeftWristCalibPoint, RightWristCalibPoint, LeftKneeCalibPoint, RightKneeCalibPoint);//MpLandmarkListへの要素追加はCSV経由で代入する
+    AddElement(_mirrorCalibPointList, _LeftWristCalibPoint, _RightWristCalibPoint, _LeftKneeCalibPoint, _RightKneeCalibPoint);//MpLandmarkListへの要素追加はCSV経由で代入する
     _mirrorCalibArray = new float[8,1];
   }
 
@@ -353,8 +375,8 @@ public class GameManager : MonoBehaviour
 
   public void ClickMirrorCalibButton()
   {
-    _mirrorCalibButton.enabled = false;
-    StartCoroutine(MirrorCalibCountDown(20));
+    _mirrorCalibButton.SetActive(false);
+    StartCoroutine(MirrorCalibCountDown(7));
   }
 
   //2023/7/21(金)追加
@@ -419,7 +441,8 @@ public class GameManager : MonoBehaviour
   public void ClickSquatCalibButton()
   {
     _count++;
-    _calibrationButton.enabled = false;
+    //_calibrationButton.enabled = false;
+    _calibrationButton.SetActive(false);
     StartCoroutine(CountDown());
   }
 
@@ -428,9 +451,11 @@ public class GameManager : MonoBehaviour
     for(int i = 5; i > -1; i--)
     {
       if(i!=5) yield return new WaitForSeconds(1);
+      //_countDownText.text = i.ToString();
       _countDownText.text = i.ToString();
     }
 
+    //_countDownText.text = " ";
     _countDownText.text = " ";
 
     if(_count == 1)
@@ -438,6 +463,7 @@ public class GameManager : MonoBehaviour
       //頭のy_highを計測する処理
       headHighPos = _landMarkPos;
       Debug.Log("スクワット時の頭の最高点は" + headHighPos + ("です！！"));
+      //_explanationText.text = "低姿勢の計測";
       _explanationText.text = "低姿勢の計測";
     }
 
@@ -448,7 +474,8 @@ public class GameManager : MonoBehaviour
       Debug.Log("スクワット時の頭の最低点は" + headLowPos + ("です！！"));
     }
 
-    _calibrationButton.enabled = true;
+    //_calibrationButton.enabled = true;
+    _calibrationButton.SetActive(true);
     yield break;
   }
 
@@ -582,9 +609,42 @@ public class GameManager : MonoBehaviour
   {
     if (!isResultGo)
     {
+      //2023/9/11(月)追加
+      DeleteUI();
       curve = CreateCurves();
       Debug.Log("CreateCurvesしました！！！");
     }
+  }
+
+  //2023/9/11(月)追加
+  private void DeleteUI()
+  {
+    _mirrorCalibCountDownText.enabled = false;
+    _mirrorCalibExplanationText.enabled = false;
+    _mirrorCalibButton.SetActive(false);
+    _Header.SetActive(false);
+    _Footer.SetActive(false);
+    _calibrationButton.SetActive(false);
+    _mirrorCalibButton.SetActive(false);
+    _GameStartButton.SetActive(false);
+    _explanationText.enabled = false;
+    _countDownText.enabled = false;
+    _mirrorCalibExplanationText.enabled = false;
+    _mirrorCalibCountDownText.enabled = false;
+    _MirrorCalibText.enabled = false;
+    _LeftWristText.enabled = false;
+    _RightWristText.enabled = false;
+    _LeftKneeText.enabled = false;
+    _RightKneeText.enabled = false;
+    _TrainingTypeText.enabled = false;
+    //_TrainingTypeDropdown.
+    _Horizon.SetActive(false);
+    _Vertical.SetActive(false);
+    _HeadCalibPoint.SetActive(false);
+    _LeftWristCalibPoint.SetActive(false);
+    _RightWristCalibPoint.SetActive(false);
+    _LeftKneeCalibPoint.SetActive(false);
+    _RightKneeCalibPoint.SetActive(false) ;
   }
 
   private void GameEnd()
