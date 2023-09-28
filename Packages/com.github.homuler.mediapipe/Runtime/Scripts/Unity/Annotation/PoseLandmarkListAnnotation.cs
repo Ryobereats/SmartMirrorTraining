@@ -11,6 +11,7 @@ using UnityEngine;
 using System.IO;
 using System.Text;
 using System.Linq;
+using UnityEngine.UI;
 
 
 namespace Mediapipe.Unity
@@ -50,6 +51,38 @@ namespace Mediapipe.Unity
     private Vector3 _rightWrist;
     private Vector3 _leftKnee;
     private Vector3 _rightKnee;
+
+    //2023/9/22(金)追加
+    private Order _order;
+    private bool _isFIndButtons = false;
+    private GameObject _mirrorCalibButton;
+    private GameObject _calibButton;
+    private GameObject _gameStartButton;
+    private bool isInitOrder = false;
+    GameObject _button = null;
+
+    //2023/9/23(土)追加
+    private float _startTime = -1;//ボタンクリック判定のための開始時間
+    private float _endTime = -1;
+    private int _lineIndex = -1;//CalibratedLandmarkPos.csvの中で注目したい行のインデックスを格納する変数
+    private List<float> _timeList;
+    private List<string> _orderList;
+    private List<string> _boolList;
+    int _linesIndex = -1;
+
+    //2023/9/24(日)追加
+    private int _trueCount = -1;
+
+    //2023/9/25(月)追加
+    private int _csvLatestIndex = -1;
+
+    //2023/9/28(木)追加
+    private float _clickJudgeTime = 0;//タッチレスクリック機能におけるクリック判定のための時間条件
+    private GameObject _pointingCursor = null;//タッチレスクリック機能における右手首の位置にカーソルを表示
+    private bool _isCameraOn = false;
+    private Image _circleImage;
+    private float _waitTime = 1f;
+    private bool _isButtonClicked = false;
 
     [Flags]
     public enum BodyParts : short
@@ -153,6 +186,9 @@ namespace Mediapipe.Unity
       //2023/7/4追加
       _folderPath = GetFolderPath();
       CreateDirectory(_folderPath);
+
+      //2023/9/28(木)追加
+      _circleImage = GameObject.Find("CircleImage").GetComponent<Image>();
     }
 
 #if UNITY_EDITOR
@@ -211,7 +247,7 @@ namespace Mediapipe.Unity
       //    //Debug.Log(i + "番目のランドマークの元々の座標は" + "(" + x + "," + y + "," + z + "," + ")" + "です");
       //    _landmarkListAnnotation[i].transform.position = new Vector3(ConvertCoordinate(lines, x, y, CoordinateType.x), ConvertCoordinate(lines, x, y, CoordinateType.y), z);
       //    //Debug.Log(i + "番目のランドマークのキャリブレーション後の座標は" + _landmarkListAnnotation[i].transform.position + "です");
-          
+
       //    //List<Vector3> convertedLandmarkList.Add(_landmarkListAnnotation[i].transform.position);
       //    Debug.Log("キャリブレーション行列の書かれたCSVの読み取り完了");
       //  }
@@ -245,7 +281,7 @@ namespace Mediapipe.Unity
 
         string[] _latestDatas = _endLine.Split(',');
 
-        for(int i = 0; i < 8; i++)
+        for (int i = 0; i < 8; i++)
         {
           floatLines[i] = float.Parse(_latestDatas[i]);
         }
@@ -255,7 +291,7 @@ namespace Mediapipe.Unity
       {
         Debug.Log("CSV読み込み失敗: Path:" + filePath);
         System.Console.WriteLine(e.Message);
-        for(int i = 0; i < 8; i++)
+        for (int i = 0; i < 8; i++)
         {
           floatLines[i] = 0;
           Debug.Log("floatLinesの中身は" + floatLines[i]);
@@ -264,8 +300,154 @@ namespace Mediapipe.Unity
       }
     }
 
+    //2023/9/23(土)追加
+    //private void ReadCsv2(string filePath)
+    //{
+    //  Debug.Log("CSV読み込み");
+    //  List<float> floatLines = new List<float>();
+    //  List<string> orderLines = new List<string>();
+    //  List<string> boolLines = new List<string>();
+
+    //  List<List<string>> linesList = new List<List<string>>();
+
+    //  //List<List<float>> floatLinesList = new List<List<float>>();
+    //  //List<List<string>> orderLinesList = new List<List<string>>();
+    //  //List<List<string>> boolLinesList = new List<List<string>>();
+
+    //  try
+    //  {
+    //    // 全行読込
+    //    string[] lines = File.ReadAllLines(filePath, Encoding.GetEncoding("Shift_JIS"));
+    //    Debug.Log("読み込んだぜ");
+
+    //    foreach (string line in lines)
+    //    {
+    //      Debug.Log("フォーイーチに入ったよ");
+    //      //コンマ区切りで要素を配列に追加
+    //      string[] dataArray = line.Split(',');
+    //      Debug.Log("スプリットしたよ");
+
+    //      List<string> dataList = dataArray.ToList();
+    //      Debug.Log("配列からリストに変換したよ");
+
+    //      linesList.Add(dataList);
+    //      Debug.Log("２次元リストに要素を追加したよ");
+
+    //      floatLines.Add(float.Parse(dataList[0]));
+    //      Debug.Log("フロートリストに代入されたよ");
+
+    //      orderLines.Add(dataList[4]);
+    //      Debug.Log("オーダーリストに代入されたよ");
+
+    //      boolLines.Add(dataList[5]);
+    //      Debug.Log("ブールリストに代入されたよ");
+
+    //    }
+    //    _timeList = floatLines;
+    //    _orderList = orderLines;
+    //    _boolList = boolLines;
+    //  }
+    //  catch (System.Exception e)
+    //  {
+    //    Debug.Log("CSV読み込み失敗: Path:" + filePath);
+    //    System.Console.WriteLine(e.Message);
+    //  }
+    //}
+
+    //2023/9/25(月)修正
+    private void ReadCsv2(string filePath)
+    {
+      Debug.Log("CSV読み込み");
+
+      //2023/9/25(月)追加
+      _csvLatestIndex++;
+
+      List<float> floatLines = new List<float>();
+      List<string> orderLines = new List<string>();
+      List<string> boolLines = new List<string>();
+
+      List<List<string>> linesList = new List<List<string>>();
+
+      //List<List<float>> floatLinesList = new List<List<float>>();
+      //List<List<string>> orderLinesList = new List<List<string>>();
+      //List<List<string>> boolLinesList = new List<List<string>>();
+
+      try
+      {
+        // 全行読込
+        string[] lines = File.ReadAllLines(filePath, Encoding.GetEncoding("Shift_JIS"));
+        Debug.Log("読み込んだぜ");
+
+        foreach (string line in lines)
+        {
+          Debug.Log("フォーイーチに入ったよ");
+          //コンマ区切りで要素を配列に追加
+          string[] dataArray = line.Split(',');
+          Debug.Log("スプリットしたよ");
+
+          List<string> dataList = dataArray.ToList();
+          Debug.Log("配列からリストに変換したよ");
+
+          linesList.Add(dataList);
+          Debug.Log("２次元リストに要素を追加したよ");
+
+          floatLines.Add(float.Parse(dataList[0]));
+          Debug.Log("フロートリストに代入されたよ");
+
+
+          orderLines.Add(dataList[4]);
+          Debug.Log("オーダーリストに代入されたよ");
+          Debug.Log("オーダーリストの要素数の確認");
+          Debug.Log("オーダーラインズの要素数の確認" + orderLines.Count);
+
+          boolLines.Add(dataList[5]);
+          Debug.Log("ブールリストに代入されたよ");
+        }
+        //2023/9/25(月)追加
+        _timeList.Add(floatLines[_csvLatestIndex]);
+        _orderList.Add(orderLines[_csvLatestIndex]);
+        _boolList.Add(boolLines[_csvLatestIndex]);
+        Debug.Log("オーダーリストの要素数" + _orderList.Count);
+
+      }
+      catch (System.Exception e)
+      {
+        Debug.Log("CSV読み込み失敗: Path:" + filePath);
+        System.Console.WriteLine(e.Message);
+      }
+    }
+
+    private List<List<string>> ReadStringCsv(string filePath)
+    {
+      //Debug.Log("CSV読み込み");
+
+      //List<List<float>> linesList = new List<List<float>>();
+      List<List<string>> linesList = new List<List<string>>();
+
+      try
+      {
+        // 全行読込
+        string[] lines = File.ReadAllLines(filePath, Encoding.GetEncoding("Shift_JIS"));
+
+
+        foreach (string line in lines)
+        {
+          //コンマ区切りで要素を配列に追加
+          string[] dataArray = line.Split(',');
+          List<string> dataList = dataArray.ToList();
+          linesList.Add(dataList);
+        }
+      }
+      catch (System.Exception e)
+      {
+        Debug.Log("CSV読み込み失敗: Path:" + filePath);
+        System.Console.WriteLine(e.Message);
+      }
+      return linesList;
+    }
+
     //2023/7/25(火)追加
-    private float ConvertCoordinate(float[] lines, float x,float y,CoordinateType type)
+    private float ConvertCoordinate(float[] lines, float x, float y, CoordinateType type)
     {
       float X = 0;
       float Y = 0;
@@ -373,9 +555,18 @@ namespace Mediapipe.Unity
 
     }
 
-    
+
     private void ApplyMask(BodyParts mask)
     {
+      //2023/9/22(金)追加
+
+      if (!_isFIndButtons)
+      {
+        _mirrorCalibButton = GameObject.Find(("MirrorCalibButton"));
+        _calibButton = GameObject.Find(("CalibrationButton"));
+        _gameStartButton = GameObject.Find(("GameStartButton"));
+        _isFIndButtons = true;
+      }
 
       //2023/7/3(月)追加　多分_landmarkListAnnotation[i]がランドマークなはず！
       Debug.Log("鼻の位置は" + _landmarkListAnnotation[0].transform.position + "です！！！！");
@@ -385,7 +576,7 @@ namespace Mediapipe.Unity
       //2023/7/17(月)追加
       _leftEar = _landmarkListAnnotation[7].transform.position;
       _rightEar = _landmarkListAnnotation[8].transform.position;
-      float faceRadi = Vector3.Distance(_leftEar, _rightEar) /2;
+      float faceRadi = Vector3.Distance(_leftEar, _rightEar) / 2;
 
       //2023/7/21(金)追加
       _leftWrist = _landmarkListAnnotation[15].transform.position;
@@ -393,12 +584,41 @@ namespace Mediapipe.Unity
       _leftKnee = _landmarkListAnnotation[25].transform.position;
       _rightKnee = _landmarkListAnnotation[26].transform.position;
 
+      Debug.Log("右手首" + _rightWrist);
+
       //2023/7/27(木)追加
-      if(!GameObject.Find("MirrorCalibrationCompleted")) SaveTaskData("SmartMirrorGame", _headPos,_leftWrist,_rightWrist,_leftKnee,_rightKnee);
+      if (!GameObject.Find("MirrorCalibrationCompleted")) SaveTaskData("SmartMirrorGame", _headPos, _leftWrist, _rightWrist, _leftKnee, _rightKnee);
 
       //2023/7/25(火)&7/26(水)追加
       if (GameObject.Find("MirrorCalibrationCompleted"))
       {
+        //2023/9/22(金)追加　タッチレスポインティング機能
+
+        if (!isInitOrder)//_orderの初期化
+        {
+          _order = Order.TrainingHighCalib;
+          _button = _calibButton;
+          isInitOrder = true;
+        }
+
+        if (GameObject.Find("FinishTrainingHighCalib"))
+        {
+          _order = Order.TrainingLowCalib;
+          Destroy(GameObject.Find("FinishTrainingHighCalib"));
+
+          //2023/9/28(木)追加
+          _isButtonClicked = false;
+        }
+
+        if (GameObject.Find("FinishTrainingLowCalib"))
+        {
+          _order = Order.GameOn;
+          _button = _gameStartButton;
+          Destroy(GameObject.Find("FinishTrainingLowCalib"));
+          //2023/9/28(木)追加
+          _isButtonClicked = false;
+        }
+
         Debug.Log("今からCSVを読み取ります1");
         //string filePath = "C:/Users/ig/AppData/LocalLow/DefaultCompany/MediaPipeUnityPlugin/SmartMirror/MirrorCalibration/CalibrationArray.csv";
         string filePath = "C:/Users/inoue/ig/SmartMirror/MirrorCalibration/CalibrationArray.csv";
@@ -412,11 +632,81 @@ namespace Mediapipe.Unity
           //if (i == 0) Debug.Log(i + "番目のランドマークの元々の座標は" + "(" + x + "," + y + "," + z + "," + ")" + "です");
           Debug.Log(i + "番目のランドマークの元々の座標は" + "(" + x + "," + y + "," + z + "," + ")" + "です");
           _landmarkListAnnotation[i].transform.position = new Vector3(ConvertCoordinate(lines, x, y, CoordinateType.x), ConvertCoordinate(lines, x, y, CoordinateType.y), z);
+
+          //2023/9/22(金)追加　タッチレスポインティング機能
+
+          //Vector3 calibedRightWrist = _landmarkListAnnotation[16].transform.position;//2023/9/24(日)消してみた
+          if (i == 16)
+          {
+            Vector3 calibedRightWrist = _landmarkListAnnotation[16].transform.position;//2023/9/24(日)追加
+
+            //2023/9/28(木)追加
+            if (DetectLandmarkOnButton(_button, calibedRightWrist))
+            {
+              if (!_isButtonClicked)
+              {
+                //円形ゲージに関する処理
+                _circleImage.enabled = true;
+                Debug.Log("ボタンの上にカーソルが乗りました");
+                _clickJudgeTime += Time.deltaTime;
+                //_circleImage.transform.position = new Vector3(_button.transform.position.x, _button.transform.position.y + 150, _button.transform.position.z);
+                _circleImage.GetComponent<RectTransform>().anchoredPosition = new Vector3(_button.transform.position.x, _button.transform.position.y + 150, _button.transform.position.z);
+                _circleImage.fillAmount -= (1.0f / _waitTime) * Time.deltaTime;
+                Debug.Log("円形ゲージの量" + _circleImage.fillAmount + "経過時間" + _clickJudgeTime);
+              }
+              
+              Debug.Log("クリック判定の時間" + _clickJudgeTime);
+
+            }
+            else
+            {
+              _clickJudgeTime = 0;
+              _circleImage.fillAmount = 1;
+              _circleImage.enabled = false;
+            }
+
+            if(_clickJudgeTime > _waitTime)
+            {
+              _isButtonClicked = true;
+              _button.GetComponent<Button>().onClick.Invoke();
+              Debug.Log("ボタンがスクリプトから押されました");
+              _clickJudgeTime = 0;
+              _circleImage.fillAmount = 1;
+              _circleImage.enabled = false;
+            }
+
+            //2023/9/28(木)追加 ポインティングカーソルの表示
+            if (!_isCameraOn)
+            {
+              _pointingCursor = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+              _pointingCursor.GetComponent<Renderer>().material.color = Color.yellow;
+              _pointingCursor.GetComponent<Renderer>().material.SetFloat("_Metallic", 1.0f);
+              _pointingCursor.GetComponent<Renderer>().material.SetFloat("_Glossiness", 0.5f);
+              _pointingCursor.transform.localScale = new Vector3(5, 5, 5);
+              _pointingCursor.name = "PointingCursor";
+              _isCameraOn = true;
+            }
+            _pointingCursor.transform.position = calibedRightWrist;
+
+            SaveTaskParameter("CalibratedLandmarkPos", calibedRightWrist, _order, DetectLandmarkOnButton(_button, calibedRightWrist));//csvに書き込む
+
+
+
+            //if (JudgeButtonClick())//毎フレームボタンクリックの判定を行う
+            //{
+            //  _button.GetComponent<Button>().onClick.Invoke();
+            //  Debug.Log("ボタンがスクリプトから押されました");
+            //}
+          }
+
+
+          //Debug.Log("時間リスト" + _timeList[i] + "オーダーリスト" + _timeList[i] + "ブールリスト" + _timeList[i]);
+
           Vector3 changedLandmarkPos = _landmarkListAnnotation[i].transform.position;
           Debug.Log(i + "番目のランドマークのキャリブレーション後の座標は" + changedLandmarkPos + "です");
 
           //2023/7/27(木)追加
-          if(i == 0)SaveTaskData("SmartMirrorGame", changedLandmarkPos, _leftWrist, _rightWrist, _leftKnee, _rightKnee);
+          if (i == 0) SaveTaskData("SmartMirrorGame", changedLandmarkPos, _leftWrist, _rightWrist, _leftKnee, _rightKnee);
 
           //List<Vector3> convertedLandmarkList.Add(_landmarkListAnnotation[i].transform.position);
           Debug.Log("キャリブレーション行列の書かれたCSVの読み取り完了");
@@ -441,7 +731,7 @@ namespace Mediapipe.Unity
 
       //2023/7/6(木)追加
       //Sphere(楕円)の大きさ：Vector3(43.291172, 55.6940918, 43.291172)
-      if(sphere != null)//１フレーム前のSphereを消す
+      if (sphere != null)//１フレーム前のSphereを消す
       {
         Destroy(sphere);
         Debug.Log("Sphereを消しました！！！");
@@ -547,7 +837,7 @@ namespace Mediapipe.Unity
       sw.Close();
       //Debug.Log(path + "/" + fileName + ".csv" + data + "を保存");
     }
-   
+
 
     //private void SaveTaskData(string fileName,Vector3 userPos)
     //{
@@ -563,8 +853,8 @@ namespace Mediapipe.Unity
     //    _timecount = 0;
     //  }
     //}
-    
-    private void SaveTaskData(string fileName,Vector3 headPos,Vector3 leftWrist,Vector3 rightWrist,Vector3 leftKnee,Vector3 rightKnee)
+
+    private void SaveTaskData(string fileName, Vector3 headPos, Vector3 leftWrist, Vector3 rightWrist, Vector3 leftKnee, Vector3 rightKnee)
     {
       //Debug.Log(Time.time - _time + "です！！！");
       //_time = Time.time;
@@ -576,7 +866,168 @@ namespace Mediapipe.Unity
       //_folderPathは最初にセット済み
       string data = _time + "," + headPos.x + "," + headPos.y + "," + headPos.z + "," + leftWrist.x + "," + leftWrist.y + "," + leftWrist.z + "," + rightWrist.x + "," + rightWrist.y + "," + rightWrist.z + "," + leftKnee.x + "," + leftKnee.y + "," + leftKnee.z + "," + rightKnee.x + "," + rightKnee.y + "," + rightKnee.z;
 
-        SaveData(_folderPath, data, fileName);
+      SaveData(_folderPath, data, fileName);
+    }
+
+    private void SaveTaskParameter(string fileName, Vector3 landmarkPos, Enum order, bool isLandmarkOnButton)
+    {
+      float time = Time.time;
+
+      //_folderPathは最初にセット済み
+      string data = time + "," + landmarkPos.x + "," + landmarkPos.y + "," + landmarkPos.z + "," + order + "," + isLandmarkOnButton;
+
+      SaveData(_folderPath, data, fileName);
+    }
+
+    private bool DetectLandmarkOnButton(GameObject button, Vector3 landmarkPos)//右手首のランドマークがボタン上にあるかどうかを判定してブールで返してくれる関数
+    {
+      bool isOn = false;
+      float x1 = button.transform.GetChild(1).transform.position.x;
+      float y1 = button.transform.GetChild(1).transform.position.y;
+      float x3 = button.transform.GetChild(3).transform.position.x;
+      float y3 = button.transform.GetChild(3).transform.position.y;
+      float X = landmarkPos.x;
+      float Y = landmarkPos.y;
+
+      if (x1 <= X && X <= x3 && y3 <= Y && Y <= y1)
+      {
+        isOn = true;
+      }
+
+      return isOn;
+    }
+
+    //private bool JudgeButtonClick()//2023/9/23(土)追加
+    //{
+    //  bool isClick = false;
+    //  _trueCount = 0;
+    //  ReadCsv2(_folderPath + "/" + "CalibratedLandmarkPos.csv");//_timeList,_orderList,_boolListへの代入
+    //  int index = -1;
+
+    //  Debug.Log("オーダーリストの要素数" + _orderList.Count);
+    //  for(int i =0;i<_orderList.Count;i++)
+    //  {
+    //    var orderItem = _orderList[i];
+    //    Debug.Log("オーダーの中身" +  orderItem);
+    //    Debug.Log("オーダーの中身2" + Enum.GetName(typeof(Order), _order));
+    //    index++;
+    //    Debug.Log("ブールの中身" + _boolList[index]);
+
+    //    //2023/9/24(日)追加
+    //    if (orderItem == Enum.GetName(typeof(Order), _order))
+    //    {
+    //      Debug.Log("オーダーの名前が一致");
+    //      if(_boolList[index] == "False")
+    //      {
+    //        Debug.Log("ブールがFalse");
+    //      }
+    //    }
+
+    //    if (orderItem == Enum.GetName(typeof(Order), _order) && _boolList[index] == "True")
+    //    {
+    //      Debug.Log(orderItem + index + "どらみ");
+    //      Debug.Log(Enum.GetName(typeof(Order), _order) + "どらこ");
+    //      if (_trueCount == 0)
+    //      {
+    //        _startTime = _timeList[index];
+    //        _linesIndex = index;
+    //      }
+    //      _trueCount++;
+
+    //      if (1 <= _trueCount) _endTime = _timeList[index];
+
+    //      if (3 <= (_endTime - _startTime))
+    //      {
+    //        InitVariables(_trueCount, index);
+    //        Debug.Log("ボタンがクリックされました");
+    //        return isClick;
+    //      }
+    //    }
+    //    else if (orderItem == Enum.GetName(typeof(Order), _order) && _boolList[index] != "True")
+    //    {
+    //      InitVariables(_trueCount, index);
+    //      Debug.Log("変数を初期化します");
+    //    }
+    //    else
+    //    {
+    //      Debug.Log("_orderの値とcsvのorderに記載された値が一致しません");
+    //    }
+    //    continue;
+    //  }
+
+
+    //foreach (var orderItem in _orderList.Select((value, index) => new { value, index }))
+    //{
+    //  if (orderItem.value == Enum.GetName(typeof(Order), _order) && _boolList[orderItem.index] == "TRUE")
+    //  {
+    //    Debug.Log(orderItem.value + orderItem.index + "どらみ");
+    //    Debug.Log(Enum.GetName(typeof(Order), _order) + "どらこ");
+    //    if(trueCount == 0)
+    //    {
+    //      _startTime = _timeList[orderItem.index];
+    //      _linesIndex = orderItem.index;
+    //    }
+    //    trueCount++;
+
+    //    if (1 <= trueCount)_endTime = _timeList[orderItem.index];
+
+    //    if(3 <= (_endTime - _startTime))
+    //    {
+    //      InitVariables(trueCount, orderItem.index);
+    //      Debug.Log("ボタンがクリックされました");
+    //      return isClick;
+    //    }
+    //  }
+    //  else if(orderItem.value == Enum.GetName(typeof(Order), _order) && _boolList[orderItem.index] != "TRUE")
+    //  {
+    //    InitVariables(trueCount, orderItem.index);
+    //  }
+    //  else
+    //  {
+    //    Debug.Log("_orderの値とcsvのorderに記載された値が一致しません");
+    //  }
+    //  continue;
+    //}
+
+
+
+    //  return isClick;
+    //}
+
+    private void InitVariables(float trueCount, int index)
+    {
+      Debug.Log("イにっと");
+      _trueCount = 0;//間違い候補
+      _startTime = 0;
+      _endTime = 0;
+      _linesIndex = 0;
+
+      //2023/9/24(日)追加　修正追加処理
+      if (index == 0)
+      {
+        _timeList.RemoveAt(0);
+        _orderList.RemoveAt(0);
+        _boolList.RemoveAt(0);
+        Debug.Log("リストの先頭を削除したよ");
+        return;
+      }
+
+      for (int i = 0; i == index; i++)//FALSEが来た時点でそこまでインデックスのリストの要素をすべて削除する //間違い候補
+      {
+        _timeList.RemoveAt(0);
+        _orderList.RemoveAt(0);
+        _boolList.RemoveAt(0);
+        Debug.Log("リストの先頭を削除したよ");
+      }
+    }
+
+    private enum Order
+    {
+      MirrorCalib,
+      TrainingHighCalib,
+      TrainingLowCalib,
+      GameOn,
     }
   }
 }
+

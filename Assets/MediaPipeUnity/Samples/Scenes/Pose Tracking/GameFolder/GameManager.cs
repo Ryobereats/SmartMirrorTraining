@@ -377,6 +377,8 @@ public class GameManager : MonoBehaviour
   {
     _mirrorCalibButton.SetActive(false);
     StartCoroutine(MirrorCalibCountDown(7));
+    //GameObject capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+    //capsule.name = "FinishMirrorCalib";
   }
 
   //2023/7/21(金)追加
@@ -402,14 +404,15 @@ public class GameManager : MonoBehaviour
       _mirrorCalibCountDownText.text = i.ToString();
     }
 
-    _mirrorCalibCountDownText.text = " 計測完了！！";
+    _mirrorCalibCountDownText.color = Color.red;
+    _mirrorCalibCountDownText.text = "完了";
 
     //2023/9/10修正・追加(以下４行)
     _mpLeftWristPos.x *= -1;
     _mpRightWristPos.x *= -1;
     _mpLeftKneePos.x *= -1;
     _mpRightKneePos.x *= -1;
-    
+
     ////2023/9/11修正・追加(以下8行)
     //_mpLeftWristPos.x = 100;
     //_mpLeftWristPos.y = 50;
@@ -465,6 +468,11 @@ public class GameManager : MonoBehaviour
       Debug.Log("スクワット時の頭の最高点は" + headHighPos + ("です！！"));
       //_explanationText.text = "低姿勢の計測";
       _explanationText.text = "低姿勢の計測";
+      //2023/9/22(金)追加
+      GameObject capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+      capsule.name = "FinishTrainingHighCalib";
+      capsule.transform.position = new Vector3(1000, 1000, 1000);
+      _calibrationButton.SetActive(true);
     }
 
     if (_count == 2)
@@ -472,10 +480,15 @@ public class GameManager : MonoBehaviour
       //頭のy_lowを計測する処理
       headLowPos = _landMarkPos;
       Debug.Log("スクワット時の頭の最低点は" + headLowPos + ("です！！"));
+      //2023/9/22(金)追加
+      GameObject capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+      capsule.name = "FinishTrainingLowCalib";
+      capsule.transform.position = new Vector3(1000, 1000, 1000);
+      _countDownText.color = Color.red;
+      _countDownText.text = "完了";
     }
 
     //_calibrationButton.enabled = true;
-    _calibrationButton.SetActive(true);
     yield break;
   }
 
@@ -612,6 +625,10 @@ public class GameManager : MonoBehaviour
       //2023/9/11(月)追加
       DeleteUI();
       curve = CreateCurves();
+      //2023/9/22(金)追加
+      GameObject capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+      capsule.name = "StartGame";
+      capsule.transform.position = new Vector3(1000, 1000, 1000);
       Debug.Log("CreateCurvesしました！！！");
     }
   }
