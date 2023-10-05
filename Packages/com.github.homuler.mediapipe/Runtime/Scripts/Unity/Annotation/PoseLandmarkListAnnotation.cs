@@ -84,6 +84,15 @@ namespace Mediapipe.Unity
     private float _waitTime = 1f;
     private bool _isButtonClicked = false;
 
+    //2023/10/5(木)追加
+    private List<GameObject> _switchingButtonList = new List<GameObject>();
+    private int _switchingButtonIndex = -1;
+    private float _switchingClickJudgeTime = -1;//switchingボタンのクリック判定を行うための時間カウント
+    private Image _circleImageInstanse;
+    private bool _isSwitchingButtonClicked = false;
+    private bool _isSwitchingButtonOn = false;
+    private int _clickedSwitchingButtonIndex = -1;
+
     [Flags]
     public enum BodyParts : short
     {
@@ -189,6 +198,14 @@ namespace Mediapipe.Unity
 
       //2023/9/28(木)追加
       _circleImage = GameObject.Find("CircleImage").GetComponent<Image>();
+
+      //2023/10/5(木)追加
+      _circleImageInstanse = Instantiate(_circleImage);
+      GameObject switchingButtonParent = GameObject.Find("SwitchingButtonParent");
+      for (int i = 0; i < switchingButtonParent.transform.childCount; i++)
+      {
+        _switchingButtonList.Add(switchingButtonParent.transform.GetChild(i).gameObject);
+      }
     }
 
 #if UNITY_EDITOR
@@ -640,7 +657,79 @@ namespace Mediapipe.Unity
           {
             Vector3 calibedRightWrist = _landmarkListAnnotation[16].transform.position;//2023/9/24(日)追加
 
-            //2023/9/28(木)追加
+            //2023/10/5(金)追加 画面表示ボタン＆カメラ切り替えボタンのためのタッチレスクリック機能
+            for(int k =0; k < _switchingButtonList.Count; k++)//どのボタンの上にカーソルが乗っているかどうかを判定・インデックスを取得
+            {
+              Debug.Log("スイッチングボタンリストのカウント" + _switchingButtonList.Count);
+              Debug.Log(k + "番目のスイッチング");
+
+              if (_isSwitchingButtonClicked == false && _isSwitchingButtonOn == true)
+              {
+                k = _switchingButtonIndex;
+              }
+
+              if (_switchingClickJudgeTime > _waitTime)
+              {
+                _isSwitchingButtonClicked = true;
+                _clickedSwitchingButtonIndex = k;
+                _switchingButtonList[_switchingButtonIndex].GetComponent<Button>().onClick.Invoke();
+                Debug.Log("ボタンがスクリプトから押されました");
+                _switchingClickJudgeTime = 0;
+                _circleImage.fillAmount = 1;//悪さしていない
+                Debug.Log("アマウント3");
+
+                _circleImage.enabled = false;
+              }
+
+              
+              if (DetectLandmarkOnButton(_switchingButtonList[k], calibedRightWrist))
+              {
+                Debug.Log("スイッチングボタンの上にカーソルが乗りました" + k +"どらえまん");
+                _isSwitchingButtonOn = true;
+                _switchingButtonIndex = k;
+                if (_clickedSwitchingButtonIndex == k) break;//一度クリックされたボタンを2回連続でクリックすることはできない
+
+                if (_isSwitchingButtonClicked == true && k == _switchingButtonIndex)//直前にクリックしたボタンを連続でクリックしたときには何もしない(1回クリックしたボタンの上にカーソルを乗せ続けてクリックすることはできない)
+                {
+                  Debug.Log("ばいばい" + "k=" + k + "_switchingButtonIndex=" + _switchingButtonIndex);
+                  break;
+                }
+                else _isSwitchingButtonClicked = false;
+
+                if (k != _switchingButtonIndex)//初めてボタンの上にカーソルが乗った時または前のフレーム時とは異なるボタンにカーソルが乗った時
+                {
+                  _switchingClickJudgeTime = 0;
+                  _circleImage.fillAmount = 1;
+                  Debug.Log("アマウント1");
+                }
+                //円形ゲージに関する処理
+                _switchingClickJudgeTime += Time.deltaTime;
+                _circleImage.enabled = true;
+                _circleImage.GetComponent<RectTransform>().anchoredPosition = new Vector3(_switchingButtonList[k].transform.position.x, _switchingButtonList[k].transform.position.y, _switchingButtonList[k].transform.position.z);
+                _circleImage.fillAmount -= (1.0f / _waitTime) * Time.deltaTime;
+                break;//switchingボタンのうちどれか一つでもカーソルが乗っていると分かったらfor分を抜ける
+              }
+              else//カーソルがどのswitchingButtonにも乗っていないときに実行
+              {
+                if(!DetectLandmarkOnButton(_button, calibedRightWrist))//キャリブレーション系列のボタンがクリックされていないならば
+                {
+                  _isSwitchingButtonClicked = false;
+                  _isSwitchingButtonOn = false;
+                  _switchingClickJudgeTime = 0;
+                  _circleImage.fillAmount = 1;//悪さしている
+                  Debug.Log("アマウント2");
+                  Debug.Log(k + "どらえまん");
+
+                  _circleImage.enabled = false;
+                }
+              }
+            }
+
+            
+
+
+
+            //2023/9/28(木)追加　スクワット姿勢のキャリブレーションボタンとゲーム開始ボタン用タッチレスクリック機能
             if (DetectLandmarkOnButton(_button, calibedRightWrist))
             {
               if (!_isButtonClicked)
@@ -649,20 +738,24 @@ namespace Mediapipe.Unity
                 _circleImage.enabled = true;
                 Debug.Log("ボタンの上にカーソルが乗りました");
                 _clickJudgeTime += Time.deltaTime;
-                //_circleImage.transform.position = new Vector3(_button.transform.position.x, _button.transform.position.y + 150, _button.transform.position.z);
-                _circleImage.GetComponent<RectTransform>().anchoredPosition = new Vector3(_button.transform.position.x, _button.transform.position.y + 150, _button.transform.position.z);
+                _circleImage.GetComponent<RectTransform>().anchoredPosition = new Vector3(_button.transform.position.x, _button.transform.position.y, _button.transform.position.z);
                 _circleImage.fillAmount -= (1.0f / _waitTime) * Time.deltaTime;
                 Debug.Log("円形ゲージの量" + _circleImage.fillAmount + "経過時間" + _clickJudgeTime);
               }
-              
+
               Debug.Log("クリック判定の時間" + _clickJudgeTime);
 
             }
             else
             {
               _clickJudgeTime = 0;
-              _circleImage.fillAmount = 1;
-              _circleImage.enabled = false;
+              if (!_isSwitchingButtonOn)
+              {
+                _circleImage.fillAmount = 1;
+                Debug.Log("アマウント4");
+
+                _circleImage.enabled = false;
+              }
             }
 
             if(_clickJudgeTime > _waitTime)
@@ -671,8 +764,14 @@ namespace Mediapipe.Unity
               _button.GetComponent<Button>().onClick.Invoke();
               Debug.Log("ボタンがスクリプトから押されました");
               _clickJudgeTime = 0;
-              _circleImage.fillAmount = 1;
-              _circleImage.enabled = false;
+
+              if (!_isSwitchingButtonOn)
+              {
+                _circleImage.fillAmount = 1;
+                Debug.Log("アマウント5");
+
+                _circleImage.enabled = false;
+              }
             }
 
             //2023/9/28(木)追加 ポインティングカーソルの表示

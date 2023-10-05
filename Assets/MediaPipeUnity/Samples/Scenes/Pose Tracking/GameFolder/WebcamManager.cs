@@ -41,13 +41,13 @@ public class WebcamManager : MonoBehaviour
     webcamTexture = new WebCamTexture(displayCamName, this.width, this.height, this.fps);
     GetComponent<Renderer>().material.mainTexture = webcamTexture;
     webcamTexture.Play();
-    this.transform.localScale = new Vector3(this.transform.localScale.x, this.transform.transform.localScale.y * -1, this.transform.localScale.z);
+    this.transform.localScale = new Vector3(this.transform.localScale.x * -1, this.transform.transform.localScale.y, this.transform.localScale.z);
 
     Debug.Log(devices[0].name + "カメラ1");
     Debug.Log(devices[1].name + "カメラ2");
   }
-    // Update is called once per frame
-    void Update()
+  // Update is called once per frame
+  void Update()
   {
 
   }
