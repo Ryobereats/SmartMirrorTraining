@@ -407,11 +407,11 @@ public class GameManager : MonoBehaviour
     _mirrorCalibCountDownText.color = Color.red;
     _mirrorCalibCountDownText.text = "完了";
 
-    //2023/9/10修正・追加(以下４行)
-    _mpLeftWristPos.x *= -1;
-    _mpRightWristPos.x *= -1;
-    _mpLeftKneePos.x *= -1;
-    _mpRightKneePos.x *= -1;
+    //2023/9/10修正・追加(以下４行) 2023/10/7(土)以下4行は不必要なのでコメントアウトしました
+    //_mpLeftWristPos.x *= -1;
+    //_mpRightWristPos.x *= -1;
+    //_mpLeftKneePos.x *= -1;
+    //_mpRightKneePos.x *= -1;
 
     ////2023/9/11修正・追加(以下8行)
     //_mpLeftWristPos.x = 100;

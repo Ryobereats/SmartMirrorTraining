@@ -93,6 +93,13 @@ namespace Mediapipe.Unity
     private bool _isSwitchingButtonOn = false;
     private int _clickedSwitchingButtonIndex = -1;
 
+    //2023/10/7(土)デバッグ用変数
+    private bool _is1 = false;
+    GameObject _pointingCursorLeftWrist;
+    GameObject _pointingCursorRightWrist;
+    GameObject _pointingCursorLeftKnee;
+    GameObject _pointingCursorRightKnee;
+
     [Flags]
     public enum BodyParts : short
     {
@@ -604,7 +611,64 @@ namespace Mediapipe.Unity
       Debug.Log("右手首" + _rightWrist);
 
       //2023/7/27(木)追加
-      if (!GameObject.Find("MirrorCalibrationCompleted")) SaveTaskData("SmartMirrorGame", _headPos, _leftWrist, _rightWrist, _leftKnee, _rightKnee);
+      if (!GameObject.Find("MirrorCalibrationCompleted"))
+      {
+        SaveTaskData("SmartMirrorGame", _headPos, _leftWrist, _rightWrist, _leftKnee, _rightKnee);
+
+        //2023/10/7(土)追加　デバッグ用 キャリブレーション前
+        
+        if (!_is1)
+        {
+          //左手首
+          _pointingCursorLeftWrist = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+          _pointingCursorLeftWrist.GetComponent<Renderer>().material.color = Color.white;
+          _pointingCursorLeftWrist.GetComponent<Renderer>().material.SetFloat("_Metallic", 1.0f);
+          _pointingCursorLeftWrist.GetComponent<Renderer>().material.SetFloat("_Glossiness", 0.5f);
+          _pointingCursorLeftWrist.transform.localScale = new Vector3(5, 5, 5);
+          _pointingCursorLeftWrist.name = "_pointingCursorLeftWrist";
+
+          //右手首
+          _pointingCursorRightWrist = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+          _pointingCursorRightWrist.GetComponent<Renderer>().material.color = Color.black;
+          _pointingCursorRightWrist.GetComponent<Renderer>().material.SetFloat("_Metallic", 1.0f);
+          _pointingCursorRightWrist.GetComponent<Renderer>().material.SetFloat("_Glossiness", 0.5f);
+          _pointingCursorRightWrist.transform.localScale = new Vector3(5, 5, 5);
+          _pointingCursorRightWrist.name = "_pointingCursorRightWrist";
+
+
+          //左ひざ
+          _pointingCursorLeftKnee = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+          _pointingCursorLeftKnee.GetComponent<Renderer>().material.color = Color.blue;
+          _pointingCursorLeftKnee.GetComponent<Renderer>().material.SetFloat("_Metallic", 1.0f);
+          _pointingCursorLeftKnee.GetComponent<Renderer>().material.SetFloat("_Glossiness", 0.5f);
+          _pointingCursorLeftKnee.transform.localScale = new Vector3(5, 5, 5);
+          _pointingCursorLeftKnee.name = "_pointingCursorLeftKnee";
+
+
+          //右ひざ
+          _pointingCursorRightKnee = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+          _pointingCursorRightKnee.GetComponent<Renderer>().material.color = Color.green;
+          _pointingCursorRightKnee.GetComponent<Renderer>().material.SetFloat("_Metallic", 1.0f);
+          _pointingCursorRightKnee.GetComponent<Renderer>().material.SetFloat("_Glossiness", 0.5f);
+          _pointingCursorRightKnee.transform.localScale = new Vector3(5, 5, 5);
+          _pointingCursorRightKnee.name = "_pointingCursorRightKnee";
+
+
+          _is1 = true;
+        }
+         _pointingCursorLeftWrist.transform.position = _leftWrist;
+        _pointingCursorRightWrist.transform.position = _rightWrist;
+        _pointingCursorLeftKnee.transform.position = _leftKnee;
+        _pointingCursorRightKnee.transform.position = _rightKnee;
+
+        Debug.Log("あはも左手首の座標" + _rightWrist);
+        Debug.Log("あはも右手首の座標" + _leftWrist);
+        Debug.Log("あはも左ひざの座標" + _rightKnee);
+        Debug.Log("あはも右ひざの座標" + _leftKnee);
+
+
+
+      }
 
       //2023/7/25(火)&7/26(水)追加
       if (GameObject.Find("MirrorCalibrationCompleted"))
@@ -656,6 +720,8 @@ namespace Mediapipe.Unity
           if (i == 16)
           {
             Vector3 calibedRightWrist = _landmarkListAnnotation[16].transform.position;//2023/9/24(日)追加
+
+            Debug.Log("左手の位置は" + calibedRightWrist);
 
             //2023/10/5(金)追加 画面表示ボタン＆カメラ切り替えボタンのためのタッチレスクリック機能
             for(int k =0; k < _switchingButtonList.Count; k++)//どのボタンの上にカーソルが乗っているかどうかを判定・インデックスを取得
