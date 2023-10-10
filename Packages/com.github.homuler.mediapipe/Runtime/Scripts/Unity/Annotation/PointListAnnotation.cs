@@ -17,8 +17,19 @@ namespace Mediapipe.Unity
 
   public class PointListAnnotation : ListAnnotation<PointAnnotation>
   {
+   
+    
     [SerializeField] private Color _color = Color.green;
-    [SerializeField] private float _radius = 15.0f;
+    [SerializeField ] private float _radius = 15f;
+
+    private void Start()
+    {
+      //for (int i = 0; i < gameObject.transform.childCount; i++)
+      //{
+      //  var childObject = gameObject.transform.GetChild(i).gameObject;
+      //  childrenList.Add(childObject);
+      //}
+    }
 
 #if UNITY_EDITOR
     private void OnValidate()
@@ -131,5 +142,6 @@ namespace Mediapipe.Unity
         if (point != null) { point.SetRadius(radius); }
       }
     }
+
   }
 }

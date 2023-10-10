@@ -81,7 +81,7 @@ namespace Mediapipe.Unity
     private GameObject _pointingCursor = null;//タッチレスクリック機能における右手首の位置にカーソルを表示
     private bool _isCameraOn = false;
     private Image _circleImage;
-    private float _waitTime = 1f;
+    private float _waitTime = 1f;//3倍かかる
     private bool _isButtonClicked = false;
 
     //2023/10/5(木)追加
@@ -99,6 +99,18 @@ namespace Mediapipe.Unity
     GameObject _pointingCursorRightWrist;
     GameObject _pointingCursorLeftKnee;
     GameObject _pointingCursorRightKnee;
+    Vector3 _calibedLeftWrist;
+
+    //2023/10/9(月)追加
+    private List<GameObject> _directionButtonList = new List<GameObject>();
+    private List<GameObject> _buttonList = new List<GameObject>();
+    private GameObject _dummyButton1;
+    private GameObject _dummyButton2;
+
+    //2023/10/10(火)追加
+    private Vector3 _MirrorUpPos;
+    private Vector3 _MirrorDownPos;
+    private float _eyeGazeClickJudgeTime = -1;
 
     [Flags]
     public enum BodyParts : short
@@ -207,12 +219,20 @@ namespace Mediapipe.Unity
       _circleImage = GameObject.Find("CircleImage").GetComponent<Image>();
 
       //2023/10/5(木)追加
-      _circleImageInstanse = Instantiate(_circleImage);
+      _circleImageInstanse = Instantiate(_circleImage,new Vector3(200,200,90),Quaternion.identity);//生成位置を変えた
+      _circleImageInstanse.name = "circleImageInstance";
+      //2023/10/10(火)追加　ALLUI配下に移動することで表示されるようにする
+      _circleImageInstanse.transform.parent = GameObject.Find("ALLUI").transform;
+
       GameObject switchingButtonParent = GameObject.Find("SwitchingButtonParent");
       for (int i = 0; i < switchingButtonParent.transform.childCount; i++)
       {
         _switchingButtonList.Add(switchingButtonParent.transform.GetChild(i).gameObject);
       }
+
+      //2023/10/9(月)追加
+      _dummyButton1 = GameObject.Find("DummyButton1");
+      _dummyButton2 = GameObject.Find("DummyButton2");
     }
 
 #if UNITY_EDITOR
@@ -587,8 +607,8 @@ namespace Mediapipe.Unity
       if (!_isFIndButtons)
       {
         _mirrorCalibButton = GameObject.Find(("MirrorCalibButton"));
-        _calibButton = GameObject.Find(("CalibrationButton"));
-        _gameStartButton = GameObject.Find(("GameStartButton"));
+        //_calibButton = GameObject.Find(("CalibrationButton")); シーン再生時はFalseなのでここには書かない
+        //_gameStartButton = GameObject.Find(("GameStartButton"));シーン再生時はFalseなのでここには書かない
         _isFIndButtons = true;
       }
 
@@ -602,11 +622,11 @@ namespace Mediapipe.Unity
       _rightEar = _landmarkListAnnotation[8].transform.position;
       float faceRadi = Vector3.Distance(_leftEar, _rightEar) / 2;
 
-      //2023/7/21(金)追加
-      _leftWrist = _landmarkListAnnotation[15].transform.position;
-      _rightWrist = _landmarkListAnnotation[16].transform.position;
-      _leftKnee = _landmarkListAnnotation[25].transform.position;
-      _rightKnee = _landmarkListAnnotation[26].transform.position;
+      //2023/7/21(金)追加 2023/10/7(土)変更　左手首：15→16　右手首：16→15　左ひざ：25→26　右ひざ：26→25
+      _leftWrist = _landmarkListAnnotation[16].transform.position;
+      _rightWrist = _landmarkListAnnotation[15].transform.position;
+      _leftKnee = _landmarkListAnnotation[26].transform.position;
+      _rightKnee = _landmarkListAnnotation[25].transform.position;
 
       Debug.Log("右手首" + _rightWrist);
 
@@ -616,55 +636,55 @@ namespace Mediapipe.Unity
         SaveTaskData("SmartMirrorGame", _headPos, _leftWrist, _rightWrist, _leftKnee, _rightKnee);
 
         //2023/10/7(土)追加　デバッグ用 キャリブレーション前
-        
-        if (!_is1)
-        {
-          //左手首
-          _pointingCursorLeftWrist = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-          _pointingCursorLeftWrist.GetComponent<Renderer>().material.color = Color.white;
-          _pointingCursorLeftWrist.GetComponent<Renderer>().material.SetFloat("_Metallic", 1.0f);
-          _pointingCursorLeftWrist.GetComponent<Renderer>().material.SetFloat("_Glossiness", 0.5f);
-          _pointingCursorLeftWrist.transform.localScale = new Vector3(5, 5, 5);
-          _pointingCursorLeftWrist.name = "_pointingCursorLeftWrist";
 
-          //右手首
-          _pointingCursorRightWrist = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-          _pointingCursorRightWrist.GetComponent<Renderer>().material.color = Color.black;
-          _pointingCursorRightWrist.GetComponent<Renderer>().material.SetFloat("_Metallic", 1.0f);
-          _pointingCursorRightWrist.GetComponent<Renderer>().material.SetFloat("_Glossiness", 0.5f);
-          _pointingCursorRightWrist.transform.localScale = new Vector3(5, 5, 5);
-          _pointingCursorRightWrist.name = "_pointingCursorRightWrist";
+        //if (!_is1)
+        //{
+        //  //左手首
+        //  _pointingCursorLeftWrist = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        //  _pointingCursorLeftWrist.GetComponent<Renderer>().material.color = Color.white;
+        //  _pointingCursorLeftWrist.GetComponent<Renderer>().material.SetFloat("_Metallic", 1.0f);
+        //  _pointingCursorLeftWrist.GetComponent<Renderer>().material.SetFloat("_Glossiness", 0.5f);
+        //  _pointingCursorLeftWrist.transform.localScale = new Vector3(5, 5, 5);
+        //  _pointingCursorLeftWrist.name = "_pointingCursorLeftWrist";
 
-
-          //左ひざ
-          _pointingCursorLeftKnee = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-          _pointingCursorLeftKnee.GetComponent<Renderer>().material.color = Color.blue;
-          _pointingCursorLeftKnee.GetComponent<Renderer>().material.SetFloat("_Metallic", 1.0f);
-          _pointingCursorLeftKnee.GetComponent<Renderer>().material.SetFloat("_Glossiness", 0.5f);
-          _pointingCursorLeftKnee.transform.localScale = new Vector3(5, 5, 5);
-          _pointingCursorLeftKnee.name = "_pointingCursorLeftKnee";
+        //  //右手首
+        //  _pointingCursorRightWrist = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        //  _pointingCursorRightWrist.GetComponent<Renderer>().material.color = Color.black;
+        //  _pointingCursorRightWrist.GetComponent<Renderer>().material.SetFloat("_Metallic", 1.0f);
+        //  _pointingCursorRightWrist.GetComponent<Renderer>().material.SetFloat("_Glossiness", 0.5f);
+        //  _pointingCursorRightWrist.transform.localScale = new Vector3(5, 5, 5);
+        //  _pointingCursorRightWrist.name = "_pointingCursorRightWrist";
 
 
-          //右ひざ
-          _pointingCursorRightKnee = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-          _pointingCursorRightKnee.GetComponent<Renderer>().material.color = Color.green;
-          _pointingCursorRightKnee.GetComponent<Renderer>().material.SetFloat("_Metallic", 1.0f);
-          _pointingCursorRightKnee.GetComponent<Renderer>().material.SetFloat("_Glossiness", 0.5f);
-          _pointingCursorRightKnee.transform.localScale = new Vector3(5, 5, 5);
-          _pointingCursorRightKnee.name = "_pointingCursorRightKnee";
+        //  //左ひざ
+        //  _pointingCursorLeftKnee = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        //  _pointingCursorLeftKnee.GetComponent<Renderer>().material.color = Color.blue;
+        //  _pointingCursorLeftKnee.GetComponent<Renderer>().material.SetFloat("_Metallic", 1.0f);
+        //  _pointingCursorLeftKnee.GetComponent<Renderer>().material.SetFloat("_Glossiness", 0.5f);
+        //  _pointingCursorLeftKnee.transform.localScale = new Vector3(5, 5, 5);
+        //  _pointingCursorLeftKnee.name = "_pointingCursorLeftKnee";
 
 
-          _is1 = true;
-        }
-         _pointingCursorLeftWrist.transform.position = _leftWrist;
-        _pointingCursorRightWrist.transform.position = _rightWrist;
-        _pointingCursorLeftKnee.transform.position = _leftKnee;
-        _pointingCursorRightKnee.transform.position = _rightKnee;
+        //  //右ひざ
+        //  _pointingCursorRightKnee = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        //  _pointingCursorRightKnee.GetComponent<Renderer>().material.color = Color.green;
+        //  _pointingCursorRightKnee.GetComponent<Renderer>().material.SetFloat("_Metallic", 1.0f);
+        //  _pointingCursorRightKnee.GetComponent<Renderer>().material.SetFloat("_Glossiness", 0.5f);
+        //  _pointingCursorRightKnee.transform.localScale = new Vector3(5, 5, 5);
+        //  _pointingCursorRightKnee.name = "_pointingCursorRightKnee";
 
-        Debug.Log("あはも左手首の座標" + _rightWrist);
-        Debug.Log("あはも右手首の座標" + _leftWrist);
-        Debug.Log("あはも左ひざの座標" + _rightKnee);
-        Debug.Log("あはも右ひざの座標" + _leftKnee);
+
+        //  _is1 = true;
+        //}
+        //_pointingCursorLeftWrist.transform.position = _leftWrist;
+        //_pointingCursorRightWrist.transform.position = _rightWrist;
+        //_pointingCursorLeftKnee.transform.position = _leftKnee;
+        //_pointingCursorRightKnee.transform.position = _rightKnee;
+
+        //Debug.Log("あはも左手首の座標" + _rightWrist);
+        //Debug.Log("あはも右手首の座標" + _leftWrist);
+        //Debug.Log("あはも左ひざの座標" + _rightKnee);
+        //Debug.Log("あはも右ひざの座標" + _leftKnee);
 
 
 
@@ -675,25 +695,118 @@ namespace Mediapipe.Unity
       {
         //2023/9/22(金)追加　タッチレスポインティング機能
 
+        //if (!isInitOrder)//_orderの初期化
+        //{
+        //  _order = Order.TrainingHighCalib;
+        //  _button = _calibButton;
+        //  isInitOrder = true;
+        //}
+
         if (!isInitOrder)//_orderの初期化
         {
-          _order = Order.TrainingHighCalib;
-          _button = _calibButton;
+          _order = Order.EyeGazeUpCalib;
+          //_button = _calibButton;
+          //buttonListの処理
+          //if (GameObject.Find("UseHighPos"))
+          //{
+          //  _directionButtonList.Add(GameObject.Find("UseHighPos"));
+          //}
+
+          //if (GameObject.Find("UseLowPos"))
+          //{
+          //  _directionButtonList.Add(GameObject.Find("UseLowPos"));
+          //}
+          //_buttonList = new List<GameObject>(_directionButtonList);
+
+          //2023/10/10(火)追加 EyeGazeCalibUp(Down)Buttonを1度だけFindしたらそのGameObjectをリストに格納しておく
+          _directionButtonList.Add(GameObject.Find("EyeGazeCalibUpButton"));
+          _directionButtonList.Add(GameObject.Find("EyeGazeCalibDownButton"));
+          _directionButtonList.Add(GameObject.Find("DecideButton1"));
+
+          //2023/10/10(火)追加 ミラーキャリブレーションが終わったと同時に_buttonListの初期化を行う
+          _buttonList.Add(_directionButtonList[0]);
+          _buttonList.Add(_directionButtonList[1]);
+          _buttonList.Add(_directionButtonList[2]);
+
+          for (int i = 0; i < _buttonList.Count; i++)
+          {
+            Debug.Log("おっす" + _buttonList[i].name);
+          }
+
+          _button = _dummyButton1;
           isInitOrder = true;
         }
 
+        //2023/10/9(月)追加
+        if (GameObject.Find("FinishEyeGazeUpCalib"))
+        {
+          Debug.Log("FinishEyeGazeUpCalib" + _button.name);
+          //2023/10/10(火)追加　ミラー反射の初期姿勢頭の位置を代入
+          _MirrorUpPos = GameObject.Find("UserUpPos").transform.position;
+
+          //2023/10/10(火)追加　矢印ボタンが表示されないときには_buttonListにダミーボタン要素を追加する
+          _buttonList.Clear();
+          _buttonList.Add(_dummyButton1);
+          _buttonList.Add(_dummyButton2);
+
+          _calibButton = GameObject.Find(("CalibrationButton"));
+
+          _order = Order.TrainingHighCalib;
+          Destroy(GameObject.Find("FinishEyeGazeUpCalib"));
+          _button = _calibButton;
+          Debug.Log("ボタン代入１" + _button.name);
+
+          _isButtonClicked = false;
+        }
+
+        //if (GameObject.Find("FinishTrainingHighCalib"))
+        //{
+        //  _order = Order.TrainingLowCalib;
+        //  Destroy(GameObject.Find("FinishTrainingHighCalib"));
+
+        //  //2023/9/28(木)追加
+        //  _isButtonClicked = false;
+        //}
+
         if (GameObject.Find("FinishTrainingHighCalib"))
         {
-          _order = Order.TrainingLowCalib;
-          Destroy(GameObject.Find("FinishTrainingHighCalib"));
 
-          //2023/9/28(木)追加
+
+          _order = Order.EyeGazeDownCalib;
+          Destroy(GameObject.Find("FinishTrainingHighCalib"));
+          //buttonListの処理
+          _directionButtonList.Add(GameObject.Find("DecideButton2"));
+
+          _buttonList.Clear();
+          _buttonList.Add(_directionButtonList[0]);
+          _buttonList.Add(_directionButtonList[1]);
+          _buttonList.Add(_directionButtonList[2]);
+          _buttonList.Add(_directionButtonList[3]);
+          _button = _dummyButton1;
+          _isButtonClicked = false;
+        }
+
+        //2023/10/9(月)追加
+        if (GameObject.Find("FinishEyeGazeDownCalib"))
+        {
+          //2023/10/10(火)追加　ミラー反射の初期姿勢頭の位置を代入
+          _MirrorDownPos = GameObject.Find("UserDownPos").transform.position;
+
+          //2023/10/10(火)追加　矢印ボタンが表示されないときには_buttonListにダミーボタン要素を追加する
+          _buttonList.Clear();
+          _buttonList.Add(_dummyButton1);
+          _buttonList.Add(_dummyButton2);
+          _button = _calibButton;
+
+          _order = Order.TrainingLowCalib;
+          Destroy(GameObject.Find("FinishEyeGazeDownCalib"));
           _isButtonClicked = false;
         }
 
         if (GameObject.Find("FinishTrainingLowCalib"))
         {
           _order = Order.GameOn;
+          _gameStartButton = GameObject.Find(("GameStartButton"));
           _button = _gameStartButton;
           Destroy(GameObject.Find("FinishTrainingLowCalib"));
           //2023/9/28(木)追加
@@ -716,15 +829,20 @@ namespace Mediapipe.Unity
 
           //2023/9/22(金)追加　タッチレスポインティング機能
 
-          //Vector3 calibedRightWrist = _landmarkListAnnotation[16].transform.position;//2023/9/24(日)消してみた
-          if (i == 16)
+          if(i == 16)
           {
-            Vector3 calibedRightWrist = _landmarkListAnnotation[16].transform.position;//2023/9/24(日)追加
+            _calibedLeftWrist = _landmarkListAnnotation[16].transform.position;
+          }
+
+          //Vector3 calibedRightWrist = _landmarkListAnnotation[16].transform.position;//2023/9/24(日)消してみた
+          if (i == 15)
+          {
+            Vector3 calibedRightWrist = _landmarkListAnnotation[15].transform.position;//2023/9/24(日)追加
 
             Debug.Log("左手の位置は" + calibedRightWrist);
 
             //2023/10/5(金)追加 画面表示ボタン＆カメラ切り替えボタンのためのタッチレスクリック機能
-            for(int k =0; k < _switchingButtonList.Count; k++)//どのボタンの上にカーソルが乗っているかどうかを判定・インデックスを取得
+            for (int k = 0; k < _switchingButtonList.Count; k++)//どのボタンの上にカーソルが乗っているかどうかを判定・インデックスを取得
             {
               Debug.Log("スイッチングボタンリストのカウント" + _switchingButtonList.Count);
               Debug.Log(k + "番目のスイッチング");
@@ -747,10 +865,10 @@ namespace Mediapipe.Unity
                 _circleImage.enabled = false;
               }
 
-              
+
               if (DetectLandmarkOnButton(_switchingButtonList[k], calibedRightWrist))
               {
-                Debug.Log("スイッチングボタンの上にカーソルが乗りました" + k +"どらえまん");
+                Debug.Log("スイッチングボタンの上にカーソルが乗りました" + k + "どらえまん");
                 _isSwitchingButtonOn = true;
                 _switchingButtonIndex = k;
                 if (_clickedSwitchingButtonIndex == k) break;//一度クリックされたボタンを2回連続でクリックすることはできない
@@ -777,8 +895,9 @@ namespace Mediapipe.Unity
               }
               else//カーソルがどのswitchingButtonにも乗っていないときに実行
               {
-                if(!DetectLandmarkOnButton(_button, calibedRightWrist))//キャリブレーション系列のボタンがクリックされていないならば
+                if (!DetectLandmarkOnButton(_button, calibedRightWrist))//キャリブレーション系列のボタンがクリックされていないならば
                 {
+                  //if (_button == null) return;
                   _isSwitchingButtonClicked = false;
                   _isSwitchingButtonOn = false;
                   _switchingClickJudgeTime = 0;
@@ -791,13 +910,129 @@ namespace Mediapipe.Unity
               }
             }
 
-            
+            //2023/10/9(月)追加
+            //if (DetectLandmarkOnButtonList(_buttonList, calibedRightWrist))
+            //{
+            //  if (!_isButtonClicked)
+            //  {
+            //    //円形ゲージに関する処理
+            //    _circleImage.enabled = true;
+            //    Debug.Log("ボタンの上にカーソルが乗りました");
+            //    _clickJudgeTime += Time.deltaTime;
+            //    _circleImage.GetComponent<RectTransform>().anchoredPosition = new Vector3(_button.transform.position.x, _button.transform.position.y, _button.transform.position.z);
+            //    _circleImage.fillAmount -= (1.0f / _waitTime) * Time.deltaTime;
+            //    Debug.Log("円形ゲージの量" + _circleImage.fillAmount + "経過時間" + _clickJudgeTime);
+            //  }
 
+            //  Debug.Log("クリック判定の時間" + _clickJudgeTime);
+
+            //}
+            //else
+            //{
+            //  _clickJudgeTime = 0;
+            //  if (!_isSwitchingButtonOn)
+            //  {
+            //    _circleImage.fillAmount = 1;
+            //    Debug.Log("アマウント4");
+
+            //    _circleImage.enabled = false;
+            //  }
+            //}
+
+            //if (_clickJudgeTime > _waitTime)
+            //{
+            //  _isButtonClicked = true;
+            //  _button.GetComponent<Button>().onClick.Invoke();
+            //  Debug.Log("ボタンがスクリプトから押されました");
+            //  _clickJudgeTime = 0;
+
+            //  if (!_isSwitchingButtonOn)
+            //  {
+            //    _circleImage.fillAmount = 1;
+            //    Debug.Log("アマウント5");
+
+            //    _circleImage.enabled = false;
+            //  }
+            //}
+
+            //2023/10/10(火)追加 視点キャリブレーション時のタッチレスクリック処理
+            if (_order == Order.EyeGazeUpCalib || _order == Order.EyeGazeDownCalib)
+            {
+              if (DetectLandmarkOnButtonList(_buttonList, calibedRightWrist) == EyeGazeCalibButtonType.Null)//どのボタンの上にもカーソルが乗っていないとき
+              {
+                Debug.Log("EyeGazeボタンリストの上にカーソルが乗っていません");
+                _eyeGazeClickJudgeTime = 0;
+                if (!_isSwitchingButtonOn)
+                {
+                  _circleImageInstanse.fillAmount = 1;
+                  _circleImageInstanse.enabled = false;
+                }
+              }
+              else
+              {
+                Debug.Log("EyeGaze視点キャリブレーション系列ボタンの検知");
+                //2023/10/10(火)追加
+                int buttonListClickedIndex = -1;
+
+                if (!_isButtonClicked)
+                {
+                  //円形ゲージに関する処理
+
+                  _circleImageInstanse.enabled = true;
+                  Debug.Log("EyeGazeボタンの上にカーソルが乗りました");
+                  _eyeGazeClickJudgeTime += Time.deltaTime;
+                  buttonListClickedIndex = (int)DetectLandmarkOnButtonList(_buttonList, calibedRightWrist) - 1;//Enumの要素が持つ値から-1することでインデックスを取得する
+                  Debug.Log(buttonListClickedIndex + "ばなな");
+
+                  //2023/10/10(火)追加 生成位置をボタンリストの要素のもとへ
+                  _circleImageInstanse.GetComponent<RectTransform>().anchoredPosition = new Vector3(_buttonList[buttonListClickedIndex].transform.position.x, _buttonList[buttonListClickedIndex].transform.position.y, _buttonList[buttonListClickedIndex].transform.position.z);
+                  //GameObject capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                  //capsule.name = "Test";
+                  //capsule.transform.position = _circleImageInstanse.transform.position;
+                  if (DetectLandmarkOnButtonList(_buttonList, calibedRightWrist) == EyeGazeCalibButtonType.Up || DetectLandmarkOnButtonList(_buttonList, calibedRightWrist) == EyeGazeCalibButtonType.Down)
+                  {
+                    _circleImageInstanse.fillAmount -= (1.0f / _waitTime ) * Time.deltaTime;
+                  }
+                  else if (DetectLandmarkOnButtonList(_buttonList, calibedRightWrist) == EyeGazeCalibButtonType.Decision1 || DetectLandmarkOnButtonList(_buttonList, calibedRightWrist) == EyeGazeCalibButtonType.Decision2)
+                  {
+                    _circleImageInstanse.fillAmount -= (1.0f / _waitTime) * Time.deltaTime;
+                  }
+                  Debug.Log("EyeGaze円形ゲージの量" + _circleImageInstanse.fillAmount + "経過時間" + _eyeGazeClickJudgeTime);
+                }
+
+                Debug.Log("EyeGazeクリック判定の時間" + _eyeGazeClickJudgeTime);
+
+                if (_eyeGazeClickJudgeTime > _waitTime)
+                {
+                  Debug.Log("EyeGazeクリックジャッジタイムが3秒を超えました");
+                  _isButtonClicked = true;
+                  _buttonList[buttonListClickedIndex].GetComponent<Button>().onClick.Invoke();
+                  Debug.Log("EyeGazeボタンがスクリプトから押されました" + _buttonList[buttonListClickedIndex].name);
+
+                  //矢印ボタンを押したら_isButtonClickedをfalseに変える必要性あり
+                  if (DetectLandmarkOnButtonList(_buttonList, calibedRightWrist) == EyeGazeCalibButtonType.Up || DetectLandmarkOnButtonList(_buttonList, calibedRightWrist) == EyeGazeCalibButtonType.Down)
+                  {
+                    _isButtonClicked = false;
+                  }
+                  _eyeGazeClickJudgeTime = 0;
+
+                  if (!_isSwitchingButtonOn)
+                  {
+                    _circleImageInstanse.fillAmount = 1;
+                    Debug.Log("アマウント5");
+
+                    _circleImageInstanse.enabled = false;
+                  }
+                }
+              }
+            }
 
 
             //2023/9/28(木)追加　スクワット姿勢のキャリブレーションボタンとゲーム開始ボタン用タッチレスクリック機能
             if (DetectLandmarkOnButton(_button, calibedRightWrist))
             {
+              Debug.Log("キャリブレーション系列ボタンの検知");
+              Debug.Log("初期姿勢" + _button.name);
               if (!_isButtonClicked)
               {
                 //円形ゲージに関する処理
@@ -806,6 +1041,7 @@ namespace Mediapipe.Unity
                 _clickJudgeTime += Time.deltaTime;
                 _circleImage.GetComponent<RectTransform>().anchoredPosition = new Vector3(_button.transform.position.x, _button.transform.position.y, _button.transform.position.z);
                 _circleImage.fillAmount -= (1.0f / _waitTime) * Time.deltaTime;
+                
                 Debug.Log("円形ゲージの量" + _circleImage.fillAmount + "経過時間" + _clickJudgeTime);
               }
 
@@ -824,7 +1060,7 @@ namespace Mediapipe.Unity
               }
             }
 
-            if(_clickJudgeTime > _waitTime)
+            if (_clickJudgeTime > _waitTime)
             {
               _isButtonClicked = true;
               _button.GetComponent<Button>().onClick.Invoke();
@@ -839,10 +1075,11 @@ namespace Mediapipe.Unity
                 _circleImage.enabled = false;
               }
             }
-
+            Debug.Log("もりもり");
             //2023/9/28(木)追加 ポインティングカーソルの表示
             if (!_isCameraOn)
             {
+              Debug.Log("カーソル表示");
               _pointingCursor = GameObject.CreatePrimitive(PrimitiveType.Sphere);
               _pointingCursor.GetComponent<Renderer>().material.color = Color.yellow;
               _pointingCursor.GetComponent<Renderer>().material.SetFloat("_Metallic", 1.0f);
@@ -852,6 +1089,7 @@ namespace Mediapipe.Unity
               _isCameraOn = true;
             }
             _pointingCursor.transform.position = calibedRightWrist;
+            //_pointingCursor.transform.position = _calibedLeftWrist;
 
             SaveTaskParameter("CalibratedLandmarkPos", calibedRightWrist, _order, DetectLandmarkOnButton(_button, calibedRightWrist));//csvに書き込む
 
@@ -1046,6 +1284,9 @@ namespace Mediapipe.Unity
 
     private bool DetectLandmarkOnButton(GameObject button, Vector3 landmarkPos)//右手首のランドマークがボタン上にあるかどうかを判定してブールで返してくれる関数
     {
+      //2023/10/10(火)追加
+      if (button == null) return false;
+
       bool isOn = false;
       float x1 = button.transform.GetChild(1).transform.position.x;
       float y1 = button.transform.GetChild(1).transform.position.y;
@@ -1060,6 +1301,34 @@ namespace Mediapipe.Unity
       }
 
       return isOn;
+    }
+
+    //2023/10/9(月)追加 選択されているEyeGazeCalibButtonのTypeを返してくれる関数
+    private EyeGazeCalibButtonType DetectLandmarkOnButtonList(List<GameObject> buttonList, Vector3 landmarkPos)//右手首のランドマークがボタン上にあるかどうかを判定してブールで返してくれる関数
+    {
+      float x1 = 0;
+      float y1 = 0;
+      float x3 = 0;
+      float y3 = 0;
+      float X = landmarkPos.x;
+      float Y = landmarkPos.y;
+
+      for (int i = 0; i < buttonList.Count; i++)
+      {
+        x1 = buttonList[i].transform.GetChild(1).transform.position.x;
+        y1 = buttonList[i].transform.GetChild(1).transform.position.y;
+        x3 = buttonList[i].transform.GetChild(3).transform.position.x;
+        y3 = buttonList[i].transform.GetChild(3).transform.position.y;
+
+        if (x1 <= X && X <= x3 && y3 <= Y && Y <= y1)
+        {
+          if (i == 0) return EyeGazeCalibButtonType.Up;
+          if (i == 1) return EyeGazeCalibButtonType.Down;
+          if (i == 2) return EyeGazeCalibButtonType.Decision1;//Decide1Button
+          if (i == 3) return EyeGazeCalibButtonType.Decision2;//Decide2Button
+        }
+      }
+      return EyeGazeCalibButtonType.Null;
     }
 
     //private bool JudgeButtonClick()//2023/9/23(土)追加
@@ -1189,9 +1458,21 @@ namespace Mediapipe.Unity
     private enum Order
     {
       MirrorCalib,
+      EyeGazeUpCalib,
+      EyeGazeDownCalib,
       TrainingHighCalib,
       TrainingLowCalib,
       GameOn,
+    }
+
+    //2023/10/10(火)追加　視点キャリブレーションにおけるボタンの種類（Null,Up,Down,Decision）
+    private enum EyeGazeCalibButtonType
+    {
+      Null,
+      Up,
+      Down,
+      Decision1,
+      Decision2,
     }
   }
 }

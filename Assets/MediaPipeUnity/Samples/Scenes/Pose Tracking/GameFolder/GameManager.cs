@@ -64,6 +64,10 @@ public class GameManager : MonoBehaviour
   public int redCoinNum { get; private set; } = 0;
   public List<GameObject> Coins = new List<GameObject>();
 
+  //2023/10/9(月)追加
+  private Vector3 _Head2UpButtonVec;
+  private Vector3 _Head2DownButtonVec;
+
   //コインの座標を格納した2次元配列
   //CurveArray1
   float[,] squatCurveArray1 = new float[,] { { 0, 1, 0 }, { 0, 0.75f, 0 }, { 0, 0.5f, 0 }, { 0, 0.25f, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0.25f, 0 }, { 0, 0.5f, 0 }, { 0, 0.75f, 0 }, { 0, 1, 0 } };
@@ -107,7 +111,17 @@ public class GameManager : MonoBehaviour
   [SerializeField] private TMP_Dropdown _TrainingTypeDropdown;
   [SerializeField] private GameObject _Horizon;//ok
   [SerializeField] private GameObject _Vertical;//ok
-  
+
+  //2023/10/9(月)追加
+  [SerializeField] private GameObject _EyeGazeCalibUpButton;
+  [SerializeField] private GameObject _EyeGazeCalibDownButton;
+  [SerializeField] private float _HeadCalibMoveDis = 3;
+  [SerializeField] private GameObject _DecideButton1;
+  [SerializeField] private GameObject _DecideButton2;
+
+  //2023/10/10(火)追加
+  [SerializeField] private GameObject _UserUpPos;
+  [SerializeField] private GameObject _UserDownPos;
 
   private void Awake()
   {
@@ -126,6 +140,15 @@ public class GameManager : MonoBehaviour
     _mpLandmarkList = new List<Vector3>();
     AddElement(_mirrorCalibPointList, _LeftWristCalibPoint, _RightWristCalibPoint, _LeftKneeCalibPoint, _RightKneeCalibPoint);//MpLandmarkListへの要素追加はCSV経由で代入する
     _mirrorCalibArray = new float[8,1];
+
+    //2023/10/9(月)追加 Up/DownButtonの位置を青玉の位置に応じて変化させるためのベクトルを算出
+    Vector3 HeadCalibPos = _HeadCalibPoint.transform.position;
+    Vector3 UpButtonPos = _EyeGazeCalibUpButton.transform.position;
+    Vector3 DownButtonPos = _EyeGazeCalibDownButton.transform.position;
+    //_Head2UpButtonVec = new Vector3(UpButtonPos.x - HeadCalibPos.x, UpButtonPos.y - HeadCalibPos.y, 0);
+    //_Head2DownButtonVec = new Vector3(DownButtonPos.x - HeadCalibPos.x, DownButtonPos.y - HeadCalibPos.y, 0);
+    _Head2UpButtonVec = new Vector3(15.5f, 2.8f, 0);
+    _Head2DownButtonVec = new Vector3(15.5f, -7.2f, 0);
   }
 
   // Update is called once per frame
@@ -376,10 +399,18 @@ public class GameManager : MonoBehaviour
   public void ClickMirrorCalibButton()
   {
     _mirrorCalibButton.SetActive(false);
-    StartCoroutine(MirrorCalibCountDown(7));
+    StartCoroutine(MirrorCalibCountDown(3));
+
+    
+
     //GameObject capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
     //capsule.name = "FinishMirrorCalib";
   }
+
+  //[SerializeField] private GameObject _LeftWristCalibPoint;
+  //[SerializeField] private GameObject _RightWristCalibPoint;
+  //[SerializeField] private GameObject _LeftKneeCalibPoint;
+  //[SerializeField] private GameObject _RightKneeCalibPoint;
 
   //2023/7/21(金)追加
   //public void ClickCalibButton()
@@ -403,9 +434,44 @@ public class GameManager : MonoBehaviour
       if (i != time) yield return new WaitForSeconds(1);
       _mirrorCalibCountDownText.text = i.ToString();
     }
+    //2023/10/9(月)追加
+    //2023/10/9(月)追加 赤玉削除＋視点キャリブレーション用の青玉生成
+    _LeftWristCalibPoint.SetActive(false);
+    _RightWristCalibPoint.SetActive(false);
+    _LeftKneeCalibPoint.SetActive(false);
+    _RightKneeCalibPoint.SetActive(false);
+    //2023/10/9(月)追加
+    Vector3 mirrorCalibTextPos = _mirrorCalibExplanationText.transform.localPosition;
+    _mirrorCalibExplanationText.transform.localPosition = new Vector3(mirrorCalibTextPos.x, mirrorCalibTextPos.y + 10, mirrorCalibTextPos.z);
+    _mirrorCalibExplanationText.GetComponent<TextMeshProUGUI>().fontSize = 28;
+    _mirrorCalibExplanationText.text = "青玉を頭の位置へ";
+    _HeadCalibPoint.SetActive(true);
+    _HeadCalibPoint.GetComponent<Renderer>().material.color = new Color32(0, 0, 255, 120);
+    _HeadCalibPoint.GetComponent<Renderer>().material.SetFloat("_Metallic", 1.0f);
+    _HeadCalibPoint.GetComponent<Renderer>().material.SetFloat("_Glossiness", 0.5f);
+    Vector3 generatePos = _mirrorCalibExplanationText.transform.localPosition;
+    _HeadCalibPoint.transform.localPosition = new Vector3(generatePos.x, generatePos.y - 10, _HeadCalibPoint.transform.localPosition.z);
+
+    _EyeGazeCalibUpButton.SetActive(true);
+    _EyeGazeCalibDownButton.SetActive(true);
+    float EyeGazeX = 20.8f;
+    _EyeGazeCalibUpButton.transform.localPosition = new Vector3(EyeGazeX, 41.2f, 0);
+    _EyeGazeCalibDownButton.transform.localPosition = new Vector3(EyeGazeX, 31.2f, 0);
+    Vector3 DecideButtonPos = _DecideButton1.transform.localPosition;
+    _DecideButton1.transform.localPosition = new Vector3(EyeGazeX, DecideButtonPos.y, DecideButtonPos.z);
+    _DecideButton1.SetActive(true);
 
     _mirrorCalibCountDownText.color = Color.red;
-    _mirrorCalibCountDownText.text = "完了";
+    _mirrorCalibCountDownText.text = " ";
+
+    //2023/10/10(火)追加
+    _LeftWristText.enabled = false;
+    _RightWristText.enabled = false;
+    _LeftKneeText.enabled = false;
+    _RightKneeText.enabled = false;
+    _Header.GetComponent<Image>().color = new Color(255, 255, 255, 0);
+    _MirrorCalibText.enabled = false;
+    
 
     //2023/9/10修正・追加(以下４行) 2023/10/7(土)以下4行は不必要なのでコメントアウトしました
     //_mpLeftWristPos.x *= -1;
@@ -451,14 +517,15 @@ public class GameManager : MonoBehaviour
 
   IEnumerator CountDown()
   {
-    for(int i = 5; i > -1; i--)
+    for(int i = 2; i > -1; i--)
     {
-      if(i!=5) yield return new WaitForSeconds(1);
+      if(i!=2) yield return new WaitForSeconds(1);
       //_countDownText.text = i.ToString();
       _countDownText.text = i.ToString();
     }
 
     //_countDownText.text = " ";
+    
     _countDownText.text = " ";
 
     if(_count == 1)
@@ -466,26 +533,62 @@ public class GameManager : MonoBehaviour
       //頭のy_highを計測する処理
       headHighPos = _landMarkPos;
       Debug.Log("スクワット時の頭の最高点は" + headHighPos + ("です！！"));
+
+      //2023/10/9(月)追加　ミラー反射時のスクワットの初期姿勢におけるユーザの頭の位置
+      _UserUpPos.transform.position = _HeadCalibPoint.transform.position;
+
       //_explanationText.text = "低姿勢の計測";
-      _explanationText.text = "低姿勢の計測";
+      //_explanationText.text = "低姿勢の計測";2023/10/10(火)編集
+
+     
+
       //2023/9/22(金)追加
       GameObject capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
       capsule.name = "FinishTrainingHighCalib";
       capsule.transform.position = new Vector3(1000, 1000, 1000);
-      _calibrationButton.SetActive(true);
+      //_calibrationButton.SetActive(true); 2023/10/10(火)編集
+
+      //2023/10/9(月)追加 青玉の移動（スクワット低姿勢）
+      //_HeadCalibPoint.transform.position = new Vector3(0, 17, -13.4f);
+      _HeadCalibPoint.transform.position = new Vector3(0, 18, 76f);
+      Vector3 HeadCalibPos = _HeadCalibPoint.transform.position;
+      _EyeGazeCalibUpButton.SetActive(true);
+      _EyeGazeCalibDownButton.SetActive(true);
+      _EyeGazeCalibUpButton.transform.position = new Vector3(HeadCalibPos.x + _Head2UpButtonVec.x, HeadCalibPos.y + _Head2UpButtonVec.y, 90);
+      //_EyeGazeCalibUpButton.transform.position = new Vector3(HeadCalibPos.x + _Head2UpButtonVec.x, HeadCalibPos.y + _Head2UpButtonVec.y, HeadCalibPos.z + _Head2UpButtonVec.z);
+      _EyeGazeCalibDownButton.transform.position = new Vector3(HeadCalibPos.x + _Head2DownButtonVec.x, HeadCalibPos.y + _Head2DownButtonVec.y, 90);
+      _DecideButton2.SetActive(true);
+      _explanationText.rectTransform.sizeDelta = new Vector2(250, 50);
+      _explanationText.text = "青玉を頭の位置へ";
     }
 
     if (_count == 2)
     {
       //頭のy_lowを計測する処理
       headLowPos = _landMarkPos;
+
+      //2023/10/9(月)追加　ミラー反射時のスクワットの低姿勢におけるユーザの頭の位置
+      _UserDownPos.transform.position = _HeadCalibPoint.transform.position;
+
       Debug.Log("スクワット時の頭の最低点は" + headLowPos + ("です！！"));
+
+     
+
       //2023/9/22(金)追加
       GameObject capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
       capsule.name = "FinishTrainingLowCalib";
       capsule.transform.position = new Vector3(1000, 1000, 1000);
       _countDownText.color = Color.red;
-      _countDownText.text = "完了";
+      //_countDownText.text = "完了";
+      _countDownText.enabled = false;
+
+      //2023/10/10(火)追加
+      _HeadCalibPoint.SetActive(false);
+      _explanationText.rectTransform.sizeDelta = new Vector2(400, 50);
+      _explanationText.text = "ゲームを始めましょう";
+      _GameStartButton.SetActive(true);
+      _GameStartButton.transform.position = _calibrationButton.transform.position;
+      
     }
 
     //_calibrationButton.enabled = true;
@@ -662,6 +765,70 @@ public class GameManager : MonoBehaviour
     _RightWristCalibPoint.SetActive(false);
     _LeftKneeCalibPoint.SetActive(false);
     _RightKneeCalibPoint.SetActive(false) ;
+  }
+
+  //2023/10/9(月)追加
+  public void ClickEyeGazeCalibUpButton()
+  {
+    Vector3 headCalibPos = _HeadCalibPoint.transform.position;
+    _HeadCalibPoint.transform.position = new Vector3(headCalibPos.x, headCalibPos.y + _HeadCalibMoveDis, headCalibPos.z);
+    
+  } 
+  
+  public void ClickEyeGazeCalibDownButton()
+  {
+    Vector3 headCalibPos = _HeadCalibPoint.transform.position;
+    _HeadCalibPoint.transform.position = new Vector3(headCalibPos.x, headCalibPos.y - _HeadCalibMoveDis, headCalibPos.z);
+    
+  }
+
+  public void ClickDecideButton1()
+  {
+    //2023/10/9(月)追加
+    GameObject capsule0 = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+    capsule0.name = "FinishEyeGazeUpCalib";
+    capsule0.transform.position = new Vector3(1001, 1000, 1000);
+    Debug.Log("FinishEyeGazeUpCalibを生成したよ");
+    _DecideButton1.SetActive(false);
+
+    
+
+    //_explanationText.text = "低姿勢の計測";
+
+    //2023/10/9(月)追加
+    //_HeadCalibPoint.SetActive(false);
+    _EyeGazeCalibUpButton.SetActive(false);
+    _EyeGazeCalibDownButton.SetActive(false);
+
+    //2023/10/10(火)追加
+    _mirrorCalibExplanationText.enabled = false;
+
+    _explanationText.enabled= true;
+    Debug.Log("もも_explanationText.enabled = true;");
+    _countDownText.enabled = true;
+    Debug.Log("もも    _calibrationButton.SetActive(true);");
+    _calibrationButton.SetActive(true);
+    Debug.Log("もも    _calibrationButton.SetActive(true);");
+    _explanationText.transform.localPosition = _mirrorCalibExplanationText.transform.localPosition;
+    _calibrationButton.transform.localPosition = _mirrorCalibButton.transform.localPosition;
+    _countDownText.transform.localPosition = _mirrorCalibCountDownText.transform.localPosition;
+  }
+
+  public void ClickDecideButton2()
+  {
+    //2023/10/9(月)追加
+    GameObject capsule0 = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+    capsule0.name = "FinishEyeGazeDownCalib";
+    capsule0.transform.position = new Vector3(1000, 1000, 1000);
+    _DecideButton2.SetActive(false);
+
+    
+
+    //2023/10/10(火)追加
+    _EyeGazeCalibUpButton.SetActive(false);
+    _EyeGazeCalibDownButton.SetActive(false);
+    _calibrationButton.SetActive(true);
+    _explanationText.text = "低姿勢の計測";
   }
 
   private void GameEnd()

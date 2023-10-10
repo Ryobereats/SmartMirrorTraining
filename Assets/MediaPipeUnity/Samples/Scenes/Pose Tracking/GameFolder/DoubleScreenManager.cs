@@ -156,4 +156,7 @@ public class DoubleScreenManager : MonoBehaviour//2023/9/28(木)追加
       Debug.Log("カメラデバッグ上WebCamManagerの大きさが変化したよ");
     }
   }
+
+  
+  
 }

@@ -86,5 +86,19 @@ namespace Mediapipe.Unity
         if (line != null) { line.SetLineWidth(lineWidth); }
       }
     }
+
+    //2023/10/8(日)追加
+    public void ActivateBone()
+    {
+      //_color = new Color(255, 255, 255, 0);
+      gameObject.SetActive(true);
+    }
+
+    public void DeactivateBone()
+    {
+      //_color = Color.red;
+      gameObject.SetActive(false);
+    }
+
   }
 }
