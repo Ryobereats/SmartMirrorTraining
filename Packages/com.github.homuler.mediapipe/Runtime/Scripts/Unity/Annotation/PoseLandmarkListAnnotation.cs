@@ -108,9 +108,32 @@ namespace Mediapipe.Unity
     private GameObject _dummyButton2;
 
     //2023/10/10(火)追加
-    private Vector3 _MirrorUpPos;
-    private Vector3 _MirrorDownPos;
+    private Vector3 _eyeGazeCalibedUpPos;//視点キャリブレーション変数　y1'
+    private Vector3 _eyeGazeCalibedDownPos;//視点キャリブレーション変数　y2'
     private float _eyeGazeClickJudgeTime = -1;
+
+    //2023/10/11(水)追加
+    //スクワットキャリブレーション時におけるMediaPipe座標
+    private Vector3 _mpHeadHighPos;
+    private Vector3 _mpHeadLowPos;
+
+    //視点キャリブレーション変数の追加
+    private Vector3 _mirrorCalibedUpPos;//視点キャリブレーション変数　y1
+    private Vector3 _mirrorCalibedDownPos;//視点キャリブレーション変数　y2
+    private Vector3 _mirrorCalibedHeadPos;//視点キャリブレーション変数　y
+    private Vector3 _eyeGazeCalibedHeadPos;//視点キャリブレーション変数　y'
+
+    //TrainingLowCalibが終わったかどうかを教えてくれるbool変数
+    private bool _isFinishTrainingLowCalib = false;
+
+    //視点キャリブレーションの処理を行うための開始タイミングを教えてくれるbool変数
+    private bool _isEyeGazeCalibCalcStart = false;
+
+    //y'の値を格納する変数
+    private float _eyeGazeCalibedY = 0;
+
+    //視点キャリブレーション方法を変える時に必要な変数
+    private float _movedYPos = 0;
 
     [Flags]
     public enum BodyParts : short
@@ -742,7 +765,7 @@ namespace Mediapipe.Unity
         {
           Debug.Log("FinishEyeGazeUpCalib" + _button.name);
           //2023/10/10(火)追加　ミラー反射の初期姿勢頭の位置を代入
-          _MirrorUpPos = GameObject.Find("UserUpPos").transform.position;
+          _eyeGazeCalibedUpPos = GameObject.Find("UserUpPos").transform.position;
 
           //2023/10/10(火)追加　矢印ボタンが表示されないときには_buttonListにダミーボタン要素を追加する
           _buttonList.Clear();
@@ -784,13 +807,16 @@ namespace Mediapipe.Unity
           _buttonList.Add(_directionButtonList[3]);
           _button = _dummyButton1;
           _isButtonClicked = false;
+
+          //2023/10/11(水)追加 スクワットキャリブレーション時におけるMediaPipe座標を格納
+          _mpHeadHighPos = GameObject.Find("MpSquatCalibUpObject").transform.position;
         }
 
         //2023/10/9(月)追加
         if (GameObject.Find("FinishEyeGazeDownCalib"))
         {
           //2023/10/10(火)追加　ミラー反射の初期姿勢頭の位置を代入
-          _MirrorDownPos = GameObject.Find("UserDownPos").transform.position;
+          _eyeGazeCalibedDownPos = GameObject.Find("UserDownPos").transform.position;
 
           //2023/10/10(火)追加　矢印ボタンが表示されないときには_buttonListにダミーボタン要素を追加する
           _buttonList.Clear();
@@ -811,6 +837,11 @@ namespace Mediapipe.Unity
           Destroy(GameObject.Find("FinishTrainingLowCalib"));
           //2023/9/28(木)追加
           _isButtonClicked = false;
+
+          //2023/10/11(水)追加 スクワットキャリブレーション時におけるMediaPipe座標を格納
+          _mpHeadLowPos = GameObject.Find("MpSquatCalibDownObject").transform.position;
+          //LowCalibが終わったかどうかを教えて、trueの時にMpHeadPosのMirrorCalibのconvert座標を算出する
+          _isFinishTrainingLowCalib = true;
         }
 
         Debug.Log("今からCSVを読み取ります1");
@@ -825,11 +856,73 @@ namespace Mediapipe.Unity
 
           //if (i == 0) Debug.Log(i + "番目のランドマークの元々の座標は" + "(" + x + "," + y + "," + z + "," + ")" + "です");
           Debug.Log(i + "番目のランドマークの元々の座標は" + "(" + x + "," + y + "," + z + "," + ")" + "です");
-          _landmarkListAnnotation[i].transform.position = new Vector3(ConvertCoordinate(lines, x, y, CoordinateType.x), ConvertCoordinate(lines, x, y, CoordinateType.y), z);
+          Vector3 convertedPos = new Vector3(ConvertCoordinate(lines, x, y, CoordinateType.x), ConvertCoordinate(lines, x, y, CoordinateType.y), z);
+          _landmarkListAnnotation[i].transform.position = convertedPos;
+
+          //2023/10/11(水)追加
+          if (_isFinishTrainingLowCalib)
+          {
+            Debug.Log("セクション1");
+            _mirrorCalibedUpPos = new Vector3(ConvertCoordinate(lines, _mpHeadHighPos.x, _mpHeadHighPos.y, CoordinateType.x), ConvertCoordinate(lines, _mpHeadHighPos.x, _mpHeadHighPos.y, CoordinateType.y), z);
+            _mirrorCalibedDownPos = new Vector3(ConvertCoordinate(lines, _mpHeadLowPos.x, _mpHeadLowPos.y, CoordinateType.x), ConvertCoordinate(lines, _mpHeadLowPos.x, _mpHeadLowPos.y, CoordinateType.y), z);
+            _isFinishTrainingLowCalib = false;
+            _isEyeGazeCalibCalcStart = true;
+          }
+
+          if(i == 0)
+          {
+            _mirrorCalibedHeadPos = new Vector3(convertedPos[0], convertedPos[1], convertedPos[2]);
+          }
+
+          //if (_isEyeGazeCalibCalcStart && _landmarkListAnnotation[0].transform.position.y < _mirrorCalibedUpPos.y)
+          //{
+          //    Debug.Log("セクション2");
+          //  if (i == 0)//頭のEyeGazeCalibration後の座標を算出する
+          //  {
+          //    Debug.Log("セクション3");
+
+          //    _eyeGazeCalibedY = (_mirrorCalibedHeadPos[1] - _mirrorCalibedDownPos[1]) * (_eyeGazeCalibedUpPos[1] - _eyeGazeCalibedDownPos[1]) / (_mirrorCalibedUpPos[1] - _mirrorCalibedDownPos[1]) + _eyeGazeCalibedDownPos[1];
+          //    _eyeGazeCalibedHeadPos = new Vector3(convertedPos[0], _eyeGazeCalibedY, convertedPos[2]);
+          //    _landmarkListAnnotation[i].transform.position = _eyeGazeCalibedHeadPos;
+          //  }
+
+          //  if(i != 0 && i < 25)//ひざより下の身体部位は動かないと仮定する(25～32は除外)
+          //  {
+          //    Debug.Log("セクション4");
+
+          //    _landmarkListAnnotation[i].transform.position = new Vector3(convertedPos[0], convertedPos[1] + (_eyeGazeCalibedY - _mirrorCalibedHeadPos.y), convertedPos[2]);
+          //  }
+
+          //}
+
+          //視点キャリブレーションにおけるランドマークの移動方法を変えた
+          if (_isEyeGazeCalibCalcStart && _mirrorCalibedHeadPos.y < _mirrorCalibedUpPos.y)
+          {
+            Debug.Log("セクション2");
+            if (i == 0)//頭のEyeGazeCalibration後の座標を算出する
+            {
+              Debug.Log("セクション3");
+
+              _eyeGazeCalibedHeadPos = new Vector3(convertedPos[0], _eyeGazeCalibedY, convertedPos[2]);
+
+              //新処理
+              _movedYPos = _mirrorCalibedUpPos.y - (Math.Abs((_mirrorCalibedHeadPos.y - _mirrorCalibedUpPos.y) * (_eyeGazeCalibedUpPos.y - _eyeGazeCalibedDownPos.y) / (_mirrorCalibedUpPos.y - _mirrorCalibedDownPos.y)));  
+
+              _landmarkListAnnotation[i].transform.position = new Vector3(convertedPos.x,_movedYPos,convertedPos.z);
+            }
+
+            if (i != 0 && i < 25)//ひざより下の身体部位は動かないと仮定する(25～32は除外)
+            {
+              Debug.Log("セクション4");
+
+              _landmarkListAnnotation[i].transform.position = new Vector3(convertedPos[0], convertedPos[1] + (_eyeGazeCalibedY - _mirrorCalibedHeadPos.y), convertedPos[2]);
+            }
+
+          }
 
           //2023/9/22(金)追加　タッチレスポインティング機能
 
-          if(i == 16)
+          if (i == 16)
           {
             _calibedLeftWrist = _landmarkListAnnotation[16].transform.position;
           }
@@ -955,7 +1048,7 @@ namespace Mediapipe.Unity
             //  }
             //}
 
-            //2023/10/10(火)追加 視点キャリブレーション時のタッチレスクリック処理
+            //2023/10/10(火)追加 視点キャリブレーション時のタッチレスクリック処理 矢印ボタンと確定ボタンに関する処理
             if (_order == Order.EyeGazeUpCalib || _order == Order.EyeGazeDownCalib)
             {
               if (DetectLandmarkOnButtonList(_buttonList, calibedRightWrist) == EyeGazeCalibButtonType.Null)//どのボタンの上にもカーソルが乗っていないとき

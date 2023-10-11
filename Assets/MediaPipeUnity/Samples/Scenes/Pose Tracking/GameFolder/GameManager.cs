@@ -68,6 +68,11 @@ public class GameManager : MonoBehaviour
   private Vector3 _Head2UpButtonVec;
   private Vector3 _Head2DownButtonVec;
 
+  //2023/10/11(水)追加
+  //スクワットキャリブレーション時におけるMediaPipe座標
+  private Vector3 _mpHeadHighPos;
+  private Vector3 _mpHeadLowPos;
+
   //コインの座標を格納した2次元配列
   //CurveArray1
   float[,] squatCurveArray1 = new float[,] { { 0, 1, 0 }, { 0, 0.75f, 0 }, { 0, 0.5f, 0 }, { 0, 0.25f, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0.25f, 0 }, { 0, 0.5f, 0 }, { 0, 0.75f, 0 }, { 0, 1, 0 } };
@@ -122,6 +127,12 @@ public class GameManager : MonoBehaviour
   //2023/10/10(火)追加
   [SerializeField] private GameObject _UserUpPos;
   [SerializeField] private GameObject _UserDownPos;
+
+  //2023/10/11(水)追加
+  [SerializeField] private int _mirrorCalibTime = 0;
+  [SerializeField] private int _squatCalibTime = 0;
+  [SerializeField] private GameObject _MpSquatCalibUpObject;
+  [SerializeField] private GameObject _MpSquatCalibDownObject;
 
   private void Awake()
   {
@@ -399,7 +410,7 @@ public class GameManager : MonoBehaviour
   public void ClickMirrorCalibButton()
   {
     _mirrorCalibButton.SetActive(false);
-    StartCoroutine(MirrorCalibCountDown(3));
+    StartCoroutine(MirrorCalibCountDown(_mirrorCalibTime));
 
     
 
@@ -517,9 +528,9 @@ public class GameManager : MonoBehaviour
 
   IEnumerator CountDown()
   {
-    for(int i = 2; i > -1; i--)
+    for(int i = _squatCalibTime; i > -1; i--)
     {
-      if(i!=2) yield return new WaitForSeconds(1);
+      if(i!= _squatCalibTime) yield return new WaitForSeconds(1);
       //_countDownText.text = i.ToString();
       _countDownText.text = i.ToString();
     }
@@ -531,21 +542,24 @@ public class GameManager : MonoBehaviour
     if(_count == 1)
     {
       //頭のy_highを計測する処理
-      headHighPos = _landMarkPos;
-      Debug.Log("スクワット時の頭の最高点は" + headHighPos + ("です！！"));
-
       //2023/10/9(月)追加　ミラー反射時のスクワットの初期姿勢におけるユーザの頭の位置
       _UserUpPos.transform.position = _HeadCalibPoint.transform.position;
+
+      //2023/10/11(水)編集　以下の1行をコメントアウトしてheadHighPosにUserUpPosの値を代入します：ミラー反射の頭の位置にコインを出すために必要な変更
+      //headHighPos = _landMarkPos;
+
+      headHighPos = _UserUpPos.transform.position;
+
+      //2023/10/11(水)追加
+      //スクワット初期姿勢時のMediaPipe座標を格納
+      _mpHeadHighPos = _landMarkPos;
+
+      //PoseLandmarkListAnnotation.csでConvertするために必要な座標をもつGameObject
+      _MpSquatCalibUpObject.transform.position = _mpHeadHighPos;
 
       //_explanationText.text = "低姿勢の計測";
       //_explanationText.text = "低姿勢の計測";2023/10/10(火)編集
 
-     
-
-      //2023/9/22(金)追加
-      GameObject capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-      capsule.name = "FinishTrainingHighCalib";
-      capsule.transform.position = new Vector3(1000, 1000, 1000);
       //_calibrationButton.SetActive(true); 2023/10/10(火)編集
 
       //2023/10/9(月)追加 青玉の移動（スクワット低姿勢）
@@ -558,26 +572,36 @@ public class GameManager : MonoBehaviour
       //_EyeGazeCalibUpButton.transform.position = new Vector3(HeadCalibPos.x + _Head2UpButtonVec.x, HeadCalibPos.y + _Head2UpButtonVec.y, HeadCalibPos.z + _Head2UpButtonVec.z);
       _EyeGazeCalibDownButton.transform.position = new Vector3(HeadCalibPos.x + _Head2DownButtonVec.x, HeadCalibPos.y + _Head2DownButtonVec.y, 90);
       _DecideButton2.SetActive(true);
+      _DecideButton2.transform.position = new Vector3(_EyeGazeCalibDownButton.transform.position.x, _DecideButton2.transform.position.y, _DecideButton2.transform.position.z);
       _explanationText.rectTransform.sizeDelta = new Vector2(250, 50);
       _explanationText.text = "青玉を頭の位置へ";
+
+      //2023/9/22(金)追加
+      GameObject capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+      capsule.name = "FinishTrainingHighCalib";
+      capsule.transform.position = new Vector3(1000, 1000, 1000);
     }
 
     if (_count == 2)
     {
       //頭のy_lowを計測する処理
-      headLowPos = _landMarkPos;
 
       //2023/10/9(月)追加　ミラー反射時のスクワットの低姿勢におけるユーザの頭の位置
       _UserDownPos.transform.position = _HeadCalibPoint.transform.position;
 
-      Debug.Log("スクワット時の頭の最低点は" + headLowPos + ("です！！"));
+      //2023/10/11(水)編集　以下の1行をコメントアウトしてheadHighPosにUserLowPosの値を代入します：ミラー反射の頭の位置にコインを出すために必要な変更
+      //headLowPos = _landMarkPos;
+      headLowPos = _UserDownPos.transform.position;
 
-     
+      //2023/10/11(水)追加
+      //スクワット低姿勢時のMediaPipe座標を格納
+      _mpHeadLowPos = _landMarkPos;
+
+      //PoseLandmarkListAnnotation.csでConvertするために必要な座標をもつGameObject
+      _MpSquatCalibDownObject.transform.position = _mpHeadLowPos;
 
       //2023/9/22(金)追加
-      GameObject capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-      capsule.name = "FinishTrainingLowCalib";
-      capsule.transform.position = new Vector3(1000, 1000, 1000);
+     
       _countDownText.color = Color.red;
       //_countDownText.text = "完了";
       _countDownText.enabled = false;
@@ -588,7 +612,10 @@ public class GameManager : MonoBehaviour
       _explanationText.text = "ゲームを始めましょう";
       _GameStartButton.SetActive(true);
       _GameStartButton.transform.position = _calibrationButton.transform.position;
-      
+
+      GameObject capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+      capsule.name = "FinishTrainingLowCalib";
+      capsule.transform.position = new Vector3(1000, 1000, 1000);
     }
 
     //_calibrationButton.enabled = true;

@@ -9,7 +9,15 @@ public class DoubleScreenManager : MonoBehaviour//2023/9/28(木)追加
   [SerializeField] private GameObject AllUI;
   [SerializeField] private GameObject MirrorCalibText;//2023/10/4水追加
   [SerializeField] private GameObject Footer;
-  [SerializeField] private GameObject WebCamManager; 
+  [SerializeField] private GameObject WebCamManager;
+
+  //2023/10/11(水)追加
+  //画面表示縦横関連UI調整
+  [SerializeField] private GameObject CameraSideButton;
+  [SerializeField] private GameObject CameraBackButton;
+  [SerializeField] private GameObject CameraUpButton;
+  [SerializeField] private GameObject CameraTypeText;
+  [SerializeField] private GameObject CameraAllViewButton;
 
   private Vector3 _verticalScreenCameraPos;
   private Vector3 _horizontalScreenCameraPos = new Vector3(103.3f,1,-10);
@@ -81,6 +89,11 @@ public class DoubleScreenManager : MonoBehaviour//2023/9/28(木)追加
     {
       Footer.transform.GetChild(i).localScale = childTransformList[i].localScale;
     }
+    CameraSideButton.SetActive(true);
+    CameraBackButton.SetActive(true);
+    CameraUpButton.SetActive(true);
+    CameraTypeText.SetActive(true);
+    CameraAllViewButton.SetActive(true);
   }
   public void SwitchSmartMirrorTypeToVertical()//スマートミラーの縦横表示を切り替える 縦
   {
@@ -95,6 +108,12 @@ public class DoubleScreenManager : MonoBehaviour//2023/9/28(木)追加
     //MirrorCalibTextの大きさを元に戻す 2023/10/4水追加
     MirrorCalibText.transform.localScale = _initMirrorCalibTextSize;
     //GameWindowのAspect変更（40:21,Aspect）
+
+    CameraSideButton.SetActive(false);
+    CameraBackButton.SetActive(false);
+    CameraUpButton.SetActive(false);
+    CameraTypeText.SetActive(false);
+    CameraAllViewButton.SetActive(false);
   }
 
   public void SwitchDisplayViewToSide()//ディスプレイのカメラを横映像に
@@ -157,6 +176,24 @@ public class DoubleScreenManager : MonoBehaviour//2023/9/28(木)追加
     }
   }
 
-  
-  
+  public void SwitchDisplayViewToAll()//ディスプレイのカメラを3視点映像に
+  {
+    if (displayCamName != _webCamDevices[1].name)
+    {
+      webcamTexture.Stop();
+      displayCamName = _webCamDevices[1].name;
+      webcamTexture = new WebCamTexture(_webCamDevices[1].name, this.width, this.height, this.fps);//配列のインデックスは変わる予定
+      Debug.Log("カメラデバッグ横webcamTextureがセットされたよ");
+
+      WebCamManager.GetComponent<Renderer>().material.mainTexture = webcamTexture;
+      Debug.Log("カメラデバッグ横WebCamManagerのテクスチャをセットしたよ");
+
+      webcamTexture.Play();
+      Debug.Log("カメラデバッグ横webcamTextureが再生されたよ");
+
+      WebCamManager.transform.localScale = new Vector3(WebCamManager.transform.localScale.x * -1, WebCamManager.transform.transform.localScale.y, WebCamManager.transform.localScale.z);
+      Debug.Log("カメラデバッグ横WebCamManagerの大きさが変化したよ");
+    }
+  }
+
 }
