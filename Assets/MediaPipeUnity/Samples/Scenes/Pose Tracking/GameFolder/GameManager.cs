@@ -545,6 +545,12 @@ public class GameManager : MonoBehaviour
       //2023/10/9(月)追加　ミラー反射時のスクワットの初期姿勢におけるユーザの頭の位置
       _UserUpPos.transform.position = _HeadCalibPoint.transform.position;
 
+      //2023/10/13(金)追加　（（やめた以下4行をDecideButton1くっりく関数の位置から移動しました））
+      //GameObject capsule0 = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+      //capsule0.name = "FinishEyeGazeUpCalib";
+      //capsule0.transform.position = new Vector3(1001, 1000, 1000);
+      //Debug.Log("FinishEyeGazeUpCalibを生成したよ");
+
       //2023/10/11(水)編集　以下の1行をコメントアウトしてheadHighPosにUserUpPosの値を代入します：ミラー反射の頭の位置にコインを出すために必要な変更
       //headHighPos = _landMarkPos;
 
@@ -588,6 +594,12 @@ public class GameManager : MonoBehaviour
 
       //2023/10/9(月)追加　ミラー反射時のスクワットの低姿勢におけるユーザの頭の位置
       _UserDownPos.transform.position = _HeadCalibPoint.transform.position;
+
+      //2023/10/13(金)追加　（（やめた以下4行をDecideButton2くっりく関数の位置から移動しました））
+      //GameObject capsule0 = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+      //capsule0.name = "FinishEyeGazeDownCalib";
+      //capsule0.transform.position = new Vector3(1001, 1000, 1000);
+      //Debug.Log("FinishEyeGazeDownCalibを生成したよ");
 
       //2023/10/11(水)編集　以下の1行をコメントアウトしてheadHighPosにUserLowPosの値を代入します：ミラー反射の頭の位置にコインを出すために必要な変更
       //headLowPos = _landMarkPos;
@@ -811,7 +823,8 @@ public class GameManager : MonoBehaviour
 
   public void ClickDecideButton1()
   {
-    //2023/10/9(月)追加
+    //2023/10/9(月)追加 
+    //2023/10/13(金)修正　（（やめた　以下4行を初期姿勢計測処理部分に移動します））
     GameObject capsule0 = GameObject.CreatePrimitive(PrimitiveType.Capsule);
     capsule0.name = "FinishEyeGazeUpCalib";
     capsule0.transform.position = new Vector3(1001, 1000, 1000);
@@ -844,6 +857,7 @@ public class GameManager : MonoBehaviour
   public void ClickDecideButton2()
   {
     //2023/10/9(月)追加
+    //2023/10/13(金)修正　（（やめた　以下3行を初期姿勢計測処理部分に移動します））
     GameObject capsule0 = GameObject.CreatePrimitive(PrimitiveType.Capsule);
     capsule0.name = "FinishEyeGazeDownCalib";
     capsule0.transform.position = new Vector3(1000, 1000, 1000);

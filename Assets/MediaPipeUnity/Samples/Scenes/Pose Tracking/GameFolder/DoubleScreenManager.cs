@@ -9,7 +9,7 @@ public class DoubleScreenManager : MonoBehaviour//2023/9/28(木)追加
   [SerializeField] private GameObject AllUI;
   [SerializeField] private GameObject MirrorCalibText;//2023/10/4水追加
   [SerializeField] private GameObject Footer;
-  [SerializeField] private GameObject WebCamManager;
+  [SerializeField] private GameObject _WebCamManager;
 
   //2023/10/11(水)追加
   //画面表示縦横関連UI調整
@@ -18,6 +18,13 @@ public class DoubleScreenManager : MonoBehaviour//2023/9/28(木)追加
   [SerializeField] private GameObject CameraUpButton;
   [SerializeField] private GameObject CameraTypeText;
   [SerializeField] private GameObject CameraAllViewButton;
+
+  //3視点表示機能
+  [SerializeField] private GameObject AllViewParent;
+  [SerializeField] private GameObject SideViewPanel;
+  [SerializeField] private GameObject BackViewPanel;
+  [SerializeField] private GameObject UpViewPanel;
+
 
   private Vector3 _verticalScreenCameraPos;
   private Vector3 _horizontalScreenCameraPos = new Vector3(103.3f,1,-10);
@@ -30,10 +37,11 @@ public class DoubleScreenManager : MonoBehaviour//2023/9/28(木)追加
   private int width = 1920;
   private int height = 1080;
   private int fps = 60;
-  private WebCamTexture webcamTexture;
+  private WebCamTexture _webcamTexture;
   private string displayCamName = "Laptop_Integrated_Webcam";
   private WebCamDevice[] _webCamDevices;
-
+  //2023/10/15(日)追加
+  private WebCamTexture _webCamTextureAll;
 
   //Footerについて
 
@@ -48,12 +56,15 @@ public class DoubleScreenManager : MonoBehaviour//2023/9/28(木)追加
     //WebCamを取り扱う際の処理
 
     _webCamDevices = WebCamTexture.devices;
-    webcamTexture = new WebCamTexture(displayCamName, this.width, this.height, this.fps);
-    WebCamManager.GetComponent<Renderer>().material.mainTexture = webcamTexture;
-    webcamTexture.Play();
-    WebCamManager.transform.localScale = new Vector3(WebCamManager.transform.localScale.x * -1, WebCamManager.transform.transform.localScale.y, WebCamManager.transform.localScale.z);
+    _webcamTexture = new WebCamTexture(displayCamName, this.width, this.height, this.fps);
+    _WebCamManager.GetComponent<Renderer>().material.mainTexture = _webcamTexture;
+    _webcamTexture.Play();
+    _WebCamManager.transform.localScale = new Vector3(_WebCamManager.transform.localScale.x * -1, _WebCamManager.transform.transform.localScale.y, _WebCamManager.transform.localScale.z);
 
-    for(int i = 0; i < _webCamDevices.Length; i++)
+    //2023/10/15(日)追加
+    //_webCamTextureAll = new WebCamTexture();
+
+    for (int i = 0; i < _webCamDevices.Length; i++)
     {
       Debug.Log(_webCamDevices[i].name + "カメラ" + i);
     }
@@ -120,18 +131,27 @@ public class DoubleScreenManager : MonoBehaviour//2023/9/28(木)追加
   {
     if(displayCamName != _webCamDevices[1].name)
     {
-      webcamTexture.Stop();
+      //2023/10/15(日)追加
+      _WebCamManager.layer = 6;
+      AllViewParent.layer = 7;
+      for (int i = 0; i < AllViewParent.transform.childCount; i++)
+      {
+        AllViewParent.transform.GetChild(i).gameObject.layer = 7;
+      }
+      if (_webCamTextureAll) _webCamTextureAll.Stop();
+
+      if (!_webcamTexture) _webcamTexture.Stop();
       displayCamName = _webCamDevices[1].name;
-      webcamTexture = new WebCamTexture(_webCamDevices[1].name, this.width, this.height, this.fps);//配列のインデックスは変わる予定
+      _webcamTexture = new WebCamTexture(_webCamDevices[1].name, this.width, this.height, this.fps);//配列のインデックスは変わる予定
       Debug.Log("カメラデバッグ横webcamTextureがセットされたよ");
 
-      WebCamManager.GetComponent<Renderer>().material.mainTexture = webcamTexture;
+      _WebCamManager.GetComponent<Renderer>().material.mainTexture = _webcamTexture;
       Debug.Log("カメラデバッグ横WebCamManagerのテクスチャをセットしたよ");
 
-      webcamTexture.Play();
+      _webcamTexture.Play();
       Debug.Log("カメラデバッグ横webcamTextureが再生されたよ");
 
-      WebCamManager.transform.localScale = new Vector3(WebCamManager.transform.localScale.x * -1, WebCamManager.transform.transform.localScale.y, WebCamManager.transform.localScale.z);
+      _WebCamManager.transform.localScale = new Vector3(_WebCamManager.transform.localScale.x * -1, _WebCamManager.transform.transform.localScale.y, _WebCamManager.transform.localScale.z);
       Debug.Log("カメラデバッグ横WebCamManagerの大きさが変化したよ");
     }
   }
@@ -140,18 +160,28 @@ public class DoubleScreenManager : MonoBehaviour//2023/9/28(木)追加
   {
     if (displayCamName != _webCamDevices[2].name)
     {
-      webcamTexture.Stop();
+      //2023/10/15(日)追加
+      _WebCamManager.layer = 6;
+      AllViewParent.layer = 7;
+      for (int i = 0; i < AllViewParent.transform.childCount; i++)
+      {
+        AllViewParent.transform.GetChild(i).gameObject.layer = 7;
+      }
+
+      if (_webCamTextureAll) _webCamTextureAll.Stop();
+
+      if (!_webcamTexture) _webcamTexture.Stop();
       displayCamName = _webCamDevices[2].name;
-      webcamTexture = new WebCamTexture(_webCamDevices[2].name, this.width, this.height, this.fps);
+      _webcamTexture = new WebCamTexture(_webCamDevices[2].name, this.width, this.height, this.fps);
       Debug.Log("カメラデバッグ後webcamTextureがセットされたよ");
 
-      WebCamManager.GetComponent<Renderer>().material.mainTexture = webcamTexture;
+      _WebCamManager.GetComponent<Renderer>().material.mainTexture = _webcamTexture;
       Debug.Log("カメラデバッグ後WebCamManagerのテクスチャをセットしたよ");
 
-      webcamTexture.Play();
+      _webcamTexture.Play();
       Debug.Log("カメラデバッグ後webcamTextureが再生されたよ");
 
-      WebCamManager.transform.localScale = new Vector3(WebCamManager.transform.localScale.x * -1, WebCamManager.transform.transform.localScale.y, WebCamManager.transform.localScale.z);
+      _WebCamManager.transform.localScale = new Vector3(_WebCamManager.transform.localScale.x * -1, _WebCamManager.transform.transform.localScale.y, _WebCamManager.transform.localScale.z);
       Debug.Log("カメラデバッグ後WebCamManagerの大きさが変化したよ");
     }
   }
@@ -160,40 +190,59 @@ public class DoubleScreenManager : MonoBehaviour//2023/9/28(木)追加
   {
     if (displayCamName != _webCamDevices[3].name)
     {
-      webcamTexture.Stop();
+      //2023/10/15(日)追加
+      _WebCamManager.layer = 6;
+      AllViewParent.layer = 7;
+      for (int i = 0; i < AllViewParent.transform.childCount; i++)
+      {
+        AllViewParent.transform.GetChild(i).gameObject.layer = 7;
+      }
+
+      if (_webCamTextureAll) _webCamTextureAll.Stop();
+
+      if(!_webcamTexture)_webcamTexture.Stop();
       displayCamName = _webCamDevices[3].name;
-      webcamTexture = new WebCamTexture(_webCamDevices[3].name, this.width, this.height, this.fps);
+      _webcamTexture = new WebCamTexture(_webCamDevices[3].name, this.width, this.height, this.fps);
       Debug.Log("カメラデバッグ上webcamTextureがセットされたよ");
 
-      WebCamManager.GetComponent<Renderer>().material.mainTexture = webcamTexture;
+      _WebCamManager.GetComponent<Renderer>().material.mainTexture = _webcamTexture;
       Debug.Log("カメラデバッグ上WebCamManagerのテクスチャをセットしたよ");
 
-      webcamTexture.Play();
+      _webcamTexture.Play();
       Debug.Log("カメラデバッグ上webcamTextureが再生されたよ");
 
-      WebCamManager.transform.localScale = new Vector3(WebCamManager.transform.localScale.x * -1, WebCamManager.transform.transform.localScale.y, WebCamManager.transform.localScale.z);
+      _WebCamManager.transform.localScale = new Vector3(_WebCamManager.transform.localScale.x * -1, _WebCamManager.transform.transform.localScale.y, _WebCamManager.transform.localScale.z);
       Debug.Log("カメラデバッグ上WebCamManagerの大きさが変化したよ");
     }
   }
 
   public void SwitchDisplayViewToAll()//ディスプレイのカメラを3視点映像に
   {
-    if (displayCamName != _webCamDevices[1].name)
+    _WebCamManager.layer = 7;
+    AllViewParent.layer = 6;
+    for(int i =0;i < AllViewParent.transform.childCount; i++)
     {
-      webcamTexture.Stop();
-      displayCamName = _webCamDevices[1].name;
-      webcamTexture = new WebCamTexture(_webCamDevices[1].name, this.width, this.height, this.fps);//配列のインデックスは変わる予定
-      Debug.Log("カメラデバッグ横webcamTextureがセットされたよ");
-
-      WebCamManager.GetComponent<Renderer>().material.mainTexture = webcamTexture;
-      Debug.Log("カメラデバッグ横WebCamManagerのテクスチャをセットしたよ");
-
-      webcamTexture.Play();
-      Debug.Log("カメラデバッグ横webcamTextureが再生されたよ");
-
-      WebCamManager.transform.localScale = new Vector3(WebCamManager.transform.localScale.x * -1, WebCamManager.transform.transform.localScale.y, WebCamManager.transform.localScale.z);
-      Debug.Log("カメラデバッグ横WebCamManagerの大きさが変化したよ");
+      AllViewParent.transform.GetChild(i).gameObject.layer = 6;
     }
+
+    _webcamTexture.Stop();
+    _webcamTexture = null;
+    ApplyWebcamtexture(_webCamDevices[1], SideViewPanel);
+    ApplyWebcamtexture(_webCamDevices[2], BackViewPanel);
+    ApplyWebcamtexture(_webCamDevices[3], UpViewPanel);
+
+  }
+
+  private void ApplyWebcamtexture(WebCamDevice webCamDevice,GameObject gameObject)
+  {
+    _webCamTextureAll = new WebCamTexture(webCamDevice.name, this.width, this.height, this.fps);
+    //_webcamTexture = new WebCamTexture(webCamDevice.name, this.width, this.height, this.fps);
+    gameObject.GetComponent<Renderer>().material.mainTexture = _webCamTextureAll;
+    //gameObject.GetComponent<Renderer>().material.mainTexture = _webcamTexture;
+    _webCamTextureAll.Play();
+    Debug.Log(webCamDevice.name + "が再生されました");
+    //_webcamTexture.Play();
+    gameObject.transform.localScale = new Vector3(gameObject.transform.localScale.x * -1, gameObject.transform.transform.localScale.y, gameObject.transform.localScale.z);
   }
 
 }
