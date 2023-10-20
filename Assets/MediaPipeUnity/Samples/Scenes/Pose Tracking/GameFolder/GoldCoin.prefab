@@ -53,6 +53,9 @@ MonoBehaviour:
   normalSe: {fileID: 8300000, guid: 68983b6fd630f0644adf9eab96db0c58, type: 3}
   specialSe: {fileID: 0}
   glassesImage: {fileID: 0}
+  _MainCanvas: {fileID: 6525793488741571179, guid: 69b12dd1d17b9424894b8e9fa3a57c25,
+    type: 3}
+  _coinSpeed: 40
 --- !u!64 &6113180919631467458
 MeshCollider:
   m_ObjectHideFlags: 0

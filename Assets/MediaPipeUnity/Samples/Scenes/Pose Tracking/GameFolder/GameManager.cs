@@ -73,6 +73,11 @@ public class GameManager : MonoBehaviour
   private Vector3 _mpHeadHighPos;
   private Vector3 _mpHeadLowPos;
 
+  //2023/10/19(木)追加
+  [SerializeField] private float _squat_speed = 40;
+  public float squat_speed { get => _squat_speed; private set => _squat_speed = value; }
+  private int _mirrorCalibCount = 0;//ミラーキャリブレーションを初期姿勢と低姿勢時の2回行う
+
   //コインの座標を格納した2次元配列
   //CurveArray1
   float[,] squatCurveArray1 = new float[,] { { 0, 1, 0 }, { 0, 0.75f, 0 }, { 0, 0.5f, 0 }, { 0, 0.25f, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0.25f, 0 }, { 0, 0.5f, 0 }, { 0, 0.75f, 0 }, { 0, 1, 0 } };
@@ -83,7 +88,6 @@ public class GameManager : MonoBehaviour
   [SerializeField] private GameObject coin;
   [SerializeField] private GameObject Parent;
   [SerializeField] private Material keepCoinColor;
-  [SerializeField] private float squat_speed;
 
   //2023/7/18(火)追加
   [SerializeField] private GameObject _HeadCalibPoint;
@@ -134,6 +138,11 @@ public class GameManager : MonoBehaviour
   [SerializeField] private GameObject _MpSquatCalibUpObject;
   [SerializeField] private GameObject _MpSquatCalibDownObject;
 
+  //2023/10/19(木)追加
+  [SerializeField] private GameObject _MainCanvas;
+  [SerializeField] private GameObject _reflectionUpPos;
+  [SerializeField] private GameObject _reflectionDownPos;
+  [SerializeField] private float _calibPointMoveDis = 0;
   private void Awake()
   {
     QualitySettings.vSyncCount = 0;
@@ -186,20 +195,47 @@ public class GameManager : MonoBehaviour
     //2023/7/24(月)追加
     if (isGetArray)//ミラーキャリブレーション行列が算出できたらCSVファイルに縦書きで行列の要素を出力する
     {
-      Debug.Log("isGetArrayがtrueになりました");
-      //string folderPath = "C:/Users/ig/AppData/LocalLow/DefaultCompany/MediaPipeUnityPlugin/SmartMirror/MirrorCalibration";
-      string folderPath = "C:/Users/inoue/ig/SmartMirror/MirrorCalibration";
-      string fileName = "CalibrationArray";
-      SaveTaskData(folderPath, fileName, _mirrorCalibArray);
+      if (_mirrorCalibCount == 1)
+      {
+        Debug.Log("isGetArrayがtrueになりました");
+        //string folderPath = "C:/Users/ig/AppData/LocalLow/DefaultCompany/MediaPipeUnityPlugin/SmartMirror/MirrorCalibration";
+        string folderPath = "C:/Users/inoue/ig/SmartMirror/MirrorCalibration";
+        string fileName = "CalibrationArray";
+        SaveTaskData(folderPath, fileName, _mirrorCalibArray);
 
-      //2023/7/25(水)追加　キャリブレーション行列をCSVに書き込んだことをPoseLamdmarkListAnnotation.csに伝えるためにゲームオブジェクトを生成
-      GameObject capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-      capsule.transform.position = new Vector3(1000, 1000, 1000);
-      capsule.name = "MirrorCalibrationCompleted";
+        //2023/7/25(水)追加　キャリブレーション行列をCSVに書き込んだことをPoseLamdmarkListAnnotation.csに伝えるためにゲームオブジェクトを生成
+        GameObject capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        capsule.transform.position = new Vector3(1000, 1000, 1000);
+        capsule.name = "MirrorCalibrationCompleted";
+      } 
+      
+      if (_mirrorCalibCount == 2)
+      {
+        //string folderPath = "C:/Users/ig/AppData/LocalLow/DefaultCompany/MediaPipeUnityPlugin/SmartMirror/MirrorCalibration";
+        string folderPath = "C:/Users/inoue/ig/SmartMirror/MirrorCalibration";
+        string fileName = "SecondCalibrationArray";
+        SaveTaskData(folderPath, fileName, _mirrorCalibArray);
 
+        //2023/7/25(水)追加　キャリブレーション行列をCSVに書き込んだことをPoseLamdmarkListAnnotation.csに伝えるためにゲームオブジェクトを生成
+        GameObject capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        capsule.transform.position = new Vector3(1000, 1000, 1000);
+        capsule.name = "SecondMirrorCalibrationCompleted";
+      }
       isGetArray = false;
     }
 
+    //2023/10/19(木)追加
+    if (GameObject.Find("UpPos"))
+    {
+      _reflectionUpPos.transform.position = GameObject.Find("UpPos").transform.position;
+      headHighPos = _reflectionUpPos.transform.position;
+    }
+
+    if (GameObject.Find("DownPos"))
+    {
+      _reflectionDownPos.transform.position = GameObject.Find("DownPos").transform.position;
+      headLowPos = _reflectionDownPos.transform.position;
+    }
     if (isGameOn)
     {
       MoveWave(curve, trainingTypes);
@@ -409,6 +445,10 @@ public class GameManager : MonoBehaviour
 
   public void ClickMirrorCalibButton()
   {
+    //2023/10/19(木)追加
+    _mirrorCalibCountDownText.enabled = true;
+    _mirrorCalibCount++;
+
     _mirrorCalibButton.SetActive(false);
     StartCoroutine(MirrorCalibCountDown(_mirrorCalibTime));
 
@@ -444,7 +484,77 @@ public class GameManager : MonoBehaviour
     {
       if (i != time) yield return new WaitForSeconds(1);
       _mirrorCalibCountDownText.text = i.ToString();
+
+      
+
     }
+
+    //2023/10/19(木)追加
+    _mirrorCalibCountDownText.text = " ";
+
+    //2023/10/19(木)追加
+
+    if (_mirrorCalibCount == 1)
+    {
+      //行列を取得するための処理
+      _mpLandmarkList.Add(_mpLeftWristPos);
+      _mpLandmarkList.Add(_mpRightWristPos);
+      _mpLandmarkList.Add(_mpLeftKneePos);
+      _mpLandmarkList.Add(_mpRightKneePos);
+     
+      _mirrorCalibArray = GetAns(_mirrorCalibPointList, _mpLandmarkList);
+      isGetArray = true;
+
+      _LeftWristCalibPoint.transform.position = new Vector3(_LeftWristCalibPoint.transform.position.x -5, _LeftWristCalibPoint.transform.position.y - _calibPointMoveDis, _LeftWristCalibPoint.transform.position.z);
+      _RightWristCalibPoint.transform.position = new Vector3(_RightWristCalibPoint.transform.position.x +5, _RightWristCalibPoint.transform.position.y - _calibPointMoveDis, _RightWristCalibPoint.transform.position.z); 
+      _LeftKneeCalibPoint.transform.position = new Vector3(_LeftKneeCalibPoint.transform.position.x -5, _LeftKneeCalibPoint.transform.position.y - _calibPointMoveDis, _LeftKneeCalibPoint.transform.position.z);
+      _RightKneeCalibPoint.transform.position = new Vector3(_RightKneeCalibPoint.transform.position.x +5, _RightKneeCalibPoint.transform.position.y - _calibPointMoveDis, _RightKneeCalibPoint.transform.position.z); ;
+
+      _mirrorCalibButton.SetActive(true);
+      _mirrorCalibCountDownText.text = _mirrorCalibTime.ToString();
+
+      yield break;
+    }
+    //2023/10/19(木)追加
+
+    if(_mirrorCalibCount == 2)
+    {
+      //行列を取得するための処理
+      _mpLandmarkList.Clear();
+      _mpLandmarkList.Add(_mpLeftWristPos);
+      _mpLandmarkList.Add(_mpRightWristPos);
+      _mpLandmarkList.Add(_mpLeftKneePos);
+      _mpLandmarkList.Add(_mpRightKneePos);
+      _mirrorCalibPointList.Clear();
+      _mirrorCalibPointList.Add(_LeftWristCalibPoint.transform.position);
+      _mirrorCalibPointList.Add(_RightWristCalibPoint.transform.position);
+      _mirrorCalibPointList.Add(_LeftKneeCalibPoint.transform.position);
+      _mirrorCalibPointList.Add(_RightKneeCalibPoint.transform.position);
+
+      _mirrorCalibArray = GetAns(_mirrorCalibPointList, _mpLandmarkList);
+      isGetArray = true;
+
+      _LeftWristCalibPoint.SetActive(false);
+      _RightWristCalibPoint.SetActive(false);
+      _LeftKneeCalibPoint.SetActive(false);
+      _RightKneeCalibPoint.SetActive(false);
+      _mirrorCalibCountDownText.enabled = false;
+
+      //ゲーム開始ボタンを出現させるための処理
+      GameObject capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+      capsule.name = "FinishTrainingLowCalib";
+      capsule.transform.position = new Vector3(1000, 1000, 1000);
+
+      _explanationText.rectTransform.sizeDelta = new Vector2(400, 50);
+      _explanationText.text = "ゲームを始めましょう";
+      _GameStartButton.SetActive(true);
+      _GameStartButton.transform.position = _calibrationButton.transform.position;
+
+      yield break;
+
+    }
+
+
     //2023/10/9(月)追加
     //2023/10/9(月)追加 赤玉削除＋視点キャリブレーション用の青玉生成
     _LeftWristCalibPoint.SetActive(false);
@@ -772,6 +882,8 @@ public class GameManager : MonoBehaviour
       capsule.name = "StartGame";
       capsule.transform.position = new Vector3(1000, 1000, 1000);
       Debug.Log("CreateCurvesしました！！！");
+
+      _GameStartButton.SetActive(false);
     }
   }
 
@@ -884,11 +996,12 @@ public class GameManager : MonoBehaviour
 
     if (childCount == 0) isFinishJudge = true;
 
-    else if (trainingTypes ==1 && Parent.transform.GetChild(childCount - 1).transform.position.x > 0)
-    {
-      isFinishJudge = true;
-      Debug.Log("isFinishJudgeがtrueになりました！！！");
-    }
+    //2023/10/16(月)修正　以下をコメントアウトします
+    //else if (trainingTypes ==1 && Parent.transform.GetChild(childCount - 1).transform.position.x > 0)
+    //{
+    //  isFinishJudge = true;
+    //  Debug.Log("isFinishJudgeがtrueになりました！！！");
+    //}
     return isFinishJudge;
   }
 
@@ -915,7 +1028,7 @@ public class GameManager : MonoBehaviour
       {
         Vector3 v;
 
-        v = new Vector3(points[i, 0] * 2 * radius - squat_speed * index, points[i, 1] * 2 * radius, points[i, 2] * 2 * radius );//2023/7/6(木)編集
+        v = new Vector3(points[i, 0] * 2 * radius - _squat_speed * index, points[i, 1] * 2 * radius, points[i, 2] * 2 * radius );//2023/7/6(木)編集
         GameObject coinClone = Instantiate(coin, v, Quaternion.Euler(90, 0, 0), Parent.transform);
         coinClone.tag = "GoldCoin";
         goldCoinNum++;
@@ -940,9 +1053,14 @@ public class GameManager : MonoBehaviour
     if (trainingTypes == 1)
     {
       float y = headLowPos.y;
-      Parent.transform.position = new Vector3(-squat_speed * gameCountDownTime, y, 90);//2023/7/6(木)編集
+
+      //2023/10/16(月)追加
+      //Parent.transform.position = new Vector3(-squat_speed * gameCountDownTime, y, 90);//2023/7/6(木)編集
+      Parent.transform.eulerAngles = new Vector3(0, 90, 0);
+      Parent.transform.position = new Vector3(_LeftWristCalibPoint.transform.position.x -7, y, _MainCanvas.transform.position.z + _squat_speed * gameCountDownTime);
+
     }
-   
+
     Debug.Log("Parentの座標は、" + Parent.transform.position + ("です！！！！"));
 
     isGameOn = true;
@@ -950,7 +1068,9 @@ public class GameManager : MonoBehaviour
   }
   private void MoveWave(GameObject curve, int type)
   {
-    if (type == 1)curve.transform.position += new Vector3(Time.deltaTime * squat_speed, 0, 0);
+    //2023/10/16(月)修正
+    //if (type == 1)curve.transform.position += new Vector3(Time.deltaTime * squat_speed, 0, 0);
+    if (type == 1)curve.transform.position += new Vector3(0, 0, -Time.deltaTime * _squat_speed);
   }
 
   private float[,] GetCurveList()

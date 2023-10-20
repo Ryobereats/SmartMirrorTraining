@@ -135,6 +135,15 @@ namespace Mediapipe.Unity
     //視点キャリブレーション方法を変える時に必要な変数
     private float _movedYPos = 0;
 
+    //2023/10/19(木)追加
+    private bool _isFirstMirrorCalibDone = false;
+    private bool _isSecondMirrorCalibDone = false;
+    private float[] _firstMirrorCalibLines = new float[8];
+    private float[] _secondMirrorCalibLines = new float[8];
+    private GameObject upCapsule;
+    private GameObject downCapsule;
+    private Vector3 _secondMirrorCalibConvertedPos;
+
     [Flags]
     public enum BodyParts : short
     {
@@ -725,40 +734,43 @@ namespace Mediapipe.Unity
         //  isInitOrder = true;
         //}
 
-        if (!isInitOrder)//_orderの初期化
-        {
-          _order = Order.EyeGazeUpCalib;
-          //_button = _calibButton;
-          //buttonListの処理
-          //if (GameObject.Find("UseHighPos"))
-          //{
-          //  _directionButtonList.Add(GameObject.Find("UseHighPos"));
-          //}
 
-          //if (GameObject.Find("UseLowPos"))
-          //{
-          //  _directionButtonList.Add(GameObject.Find("UseLowPos"));
-          //}
-          //_buttonList = new List<GameObject>(_directionButtonList);
 
-          //2023/10/10(火)追加 EyeGazeCalibUp(Down)Buttonを1度だけFindしたらそのGameObjectをリストに格納しておく
-          _directionButtonList.Add(GameObject.Find("EyeGazeCalibUpButton"));
-          _directionButtonList.Add(GameObject.Find("EyeGazeCalibDownButton"));
-          _directionButtonList.Add(GameObject.Find("DecideButton1"));
+        //2023/10/19(木)編集今までうまくいってた処理ですがミラーキャリブレーション編集によりコメントアウトします
+        //if (!isInitOrder)//_orderの初期化
+        //{
+        //  _order = Order.EyeGazeUpCalib;
+        //  //_button = _calibButton;
+        //  //buttonListの処理
+        //  //if (GameObject.Find("UseHighPos"))
+        //  //{
+        //  //  _directionButtonList.Add(GameObject.Find("UseHighPos"));
+        //  //}
 
-          //2023/10/10(火)追加 ミラーキャリブレーションが終わったと同時に_buttonListの初期化を行う
-          _buttonList.Add(_directionButtonList[0]);
-          _buttonList.Add(_directionButtonList[1]);
-          _buttonList.Add(_directionButtonList[2]);
+        //  //if (GameObject.Find("UseLowPos"))
+        //  //{
+        //  //  _directionButtonList.Add(GameObject.Find("UseLowPos"));
+        //  //}
+        //  //_buttonList = new List<GameObject>(_directionButtonList);
 
-          for (int i = 0; i < _buttonList.Count; i++)
-          {
-            Debug.Log("おっす" + _buttonList[i].name);
-          }
+        //  //2023/10/10(火)追加 EyeGazeCalibUp(Down)Buttonを1度だけFindしたらそのGameObjectをリストに格納しておく
+        //  _directionButtonList.Add(GameObject.Find("EyeGazeCalibUpButton"));
+        //  _directionButtonList.Add(GameObject.Find("EyeGazeCalibDownButton"));
+        //  _directionButtonList.Add(GameObject.Find("DecideButton1"));
 
-          _button = _dummyButton1;
-          isInitOrder = true;
-        }
+        //  //2023/10/10(火)追加 ミラーキャリブレーションが終わったと同時に_buttonListの初期化を行う
+        //  _buttonList.Add(_directionButtonList[0]);
+        //  _buttonList.Add(_directionButtonList[1]);
+        //  _buttonList.Add(_directionButtonList[2]);
+
+        //  for (int i = 0; i < _buttonList.Count; i++)
+        //  {
+        //    Debug.Log("おっす" + _buttonList[i].name);
+        //  }
+
+        //  _button = _dummyButton1;
+        //  isInitOrder = true;
+        //}
 
         //2023/10/9(月)追加
         if (GameObject.Find("FinishEyeGazeUpCalib"))
@@ -859,7 +871,19 @@ namespace Mediapipe.Unity
         Debug.Log("今からCSVを読み取ります1");
         //string filePath = "C:/Users/ig/AppData/LocalLow/DefaultCompany/MediaPipeUnityPlugin/SmartMirror/MirrorCalibration/CalibrationArray.csv";
         string filePath = "C:/Users/inoue/ig/SmartMirror/MirrorCalibration/CalibrationArray.csv";
-        float[] lines = ReadCsv(filePath);
+
+        //2023/10/19(木)追加
+        if (!_isFirstMirrorCalibDone)//_firstMirrorCalibLinesへの代入処理は1回だけにする
+        {
+          _firstMirrorCalibLines = ReadCsv(filePath);
+          for(int j =0;j< _firstMirrorCalibLines.Length;j++) 
+          {
+            Debug.Log("木曜日ん" + _firstMirrorCalibLines[j]);
+          }
+        }
+
+       
+
         for (int i = 0; i < 33; i++)
         {
           float x = _landmarkListAnnotation[i].transform.position.x;
@@ -868,15 +892,99 @@ namespace Mediapipe.Unity
 
           //if (i == 0) Debug.Log(i + "番目のランドマークの元々の座標は" + "(" + x + "," + y + "," + z + "," + ")" + "です");
           Debug.Log(i + "番目のランドマークの元々の座標は" + "(" + x + "," + y + "," + z + "," + ")" + "です");
-          Vector3 convertedPos = new Vector3(ConvertCoordinate(lines, x, y, CoordinateType.x), ConvertCoordinate(lines, x, y, CoordinateType.y), z);
-          _landmarkListAnnotation[i].transform.position = convertedPos;
+
+          Vector3 firstMirrorCalibConvertedPos = new Vector3(ConvertCoordinate(_firstMirrorCalibLines, x, y, CoordinateType.x), ConvertCoordinate(_firstMirrorCalibLines, x, y, CoordinateType.y), z);
+          _landmarkListAnnotation[i].transform.position = firstMirrorCalibConvertedPos;
+
+          //2023/10/19(木)追加
+          if (_secondMirrorCalibLines[0] != 0)
+          {
+            _secondMirrorCalibConvertedPos = new Vector3(ConvertCoordinate(_secondMirrorCalibLines, x, y, CoordinateType.x), ConvertCoordinate(_secondMirrorCalibLines, x, y, CoordinateType.y), z);
+            _landmarkListAnnotation[i].transform.position = _secondMirrorCalibConvertedPos;
+          }
+          
+
+          //2023/10/19(木)追加　ミラーキャリブレーション一回目　UpPosの値をセットしてGameManagerから読み取ってもらう
+          if (!_isFirstMirrorCalibDone && i == 0)
+          {
+            Debug.Log("処理0");
+
+            upCapsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            upCapsule.transform.position = new Vector3(1000, firstMirrorCalibConvertedPos.y, 1000);
+            upCapsule.name = "UpPos";
+            _isFirstMirrorCalibDone = true;
+          }
+
+          //2023/10/19(木)追加
+          if (GameObject.Find("SecondMirrorCalibrationCompleted") && !_isSecondMirrorCalibDone && i == 0)//低姿勢時のミラーキャリブレーション行列を取得する
+          {
+            Debug.Log("処理1");
+            filePath = "C:/Users/inoue/ig/SmartMirror/MirrorCalibration/SecondCalibrationArray.csv";
+            _secondMirrorCalibLines = ReadCsv(filePath);
+            downCapsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            _secondMirrorCalibConvertedPos = new Vector3(ConvertCoordinate(_secondMirrorCalibLines, x, y, CoordinateType.x), ConvertCoordinate(_secondMirrorCalibLines, x, y, CoordinateType.y), z);
+            downCapsule.transform.position = new Vector3(1000, _secondMirrorCalibConvertedPos.y, 1000);
+            downCapsule.name = "DownPos";
+            _isSecondMirrorCalibDone = true;
+            for (int k = 0; k < _firstMirrorCalibLines.Length; k++)
+            {
+              Debug.Log("木曜日ん2" + _secondMirrorCalibLines[k]);
+            }
+          }
+
+
+          //2023/10/19(木)追加 初期姿勢から低姿勢に至るまで＋低姿勢時のボーンにキャリブレーション結果を反映する
+          if (upCapsule != null && downCapsule != null && Math.Abs(_landmarkListAnnotation[0].transform.position.y - upCapsule.transform.position.y) > 1 && Math.Abs(_landmarkListAnnotation[0].transform.position.y - downCapsule.transform.position.y) < 1)
+          {
+            Debug.Log("処理2");
+
+            if (i == 0)
+            {
+              float m = Math.Abs(y - downCapsule.transform.position.y);
+              float n = Math.Abs(y - upCapsule.transform.position.y);
+              float upY = upCapsule.transform.position.y;
+              float downY = downCapsule.transform.position.y;
+              float betweenY = (n * downY + m * upY) / (m + n);
+              _landmarkListAnnotation[i].transform.position = new Vector3(x, betweenY, z);
+            }
+
+            //if (i != 0 && i < 25)//ひざより下の身体部位は動かないと仮定する(25～32は除外)
+            if (i != 0)
+            {
+              float dist = Math.Abs(_landmarkListAnnotation[0].transform.position.y - upCapsule.transform.position.y);
+
+              _landmarkListAnnotation[i].transform.position = new Vector3(firstMirrorCalibConvertedPos[0], firstMirrorCalibConvertedPos[1] - dist, firstMirrorCalibConvertedPos[2]);
+            }
+          }
+
+          if (upCapsule != null && downCapsule != null && Math.Abs(_landmarkListAnnotation[0].transform.position.y - downCapsule.transform.position.y) < 1)//頭の位置が低姿勢付近の時
+          {
+            Debug.Log("処理3");
+
+            if (i == 0)
+            {
+              _landmarkListAnnotation[i].transform.position = _secondMirrorCalibConvertedPos;
+
+            }
+
+            //if (i != 0 && i < 25)//ひざより下の身体部位は動かないと仮定する(25～32は除外)
+            if (i != 0)
+            {
+              float dist = Math.Abs(_landmarkListAnnotation[0].transform.position.y - downCapsule.transform.position.y);
+
+              _landmarkListAnnotation[i].transform.position = new Vector3(_secondMirrorCalibConvertedPos[0], _secondMirrorCalibConvertedPos[1] - dist, _secondMirrorCalibConvertedPos[2]);
+            }
+          }
+
+
+
 
           //2023/10/11(水)追加
           if (_isFinishTrainingLowCalib)
           {
             Debug.Log("セクション1");
-            _mirrorCalibedUpPos = new Vector3(ConvertCoordinate(lines, _mpHeadHighPos.x, _mpHeadHighPos.y, CoordinateType.x), ConvertCoordinate(lines, _mpHeadHighPos.x, _mpHeadHighPos.y, CoordinateType.y), z);
-            _mirrorCalibedDownPos = new Vector3(ConvertCoordinate(lines, _mpHeadLowPos.x, _mpHeadLowPos.y, CoordinateType.x), ConvertCoordinate(lines, _mpHeadLowPos.x, _mpHeadLowPos.y, CoordinateType.y), z);
+            _mirrorCalibedUpPos = new Vector3(ConvertCoordinate(_firstMirrorCalibLines, _mpHeadHighPos.x, _mpHeadHighPos.y, CoordinateType.x), ConvertCoordinate(_firstMirrorCalibLines, _mpHeadHighPos.x, _mpHeadHighPos.y, CoordinateType.y), z);
+            _mirrorCalibedDownPos = new Vector3(ConvertCoordinate(_firstMirrorCalibLines, _mpHeadLowPos.x, _mpHeadLowPos.y, CoordinateType.x), ConvertCoordinate(_firstMirrorCalibLines, _mpHeadLowPos.x, _mpHeadLowPos.y, CoordinateType.y), z);
             _isFinishTrainingLowCalib = false;
             _isEyeGazeCalibCalcStart = true;
             Debug.Log("金曜_mirrorCalibedUpPos" + _mirrorCalibedUpPos);
@@ -885,7 +993,7 @@ namespace Mediapipe.Unity
 
           if(i == 0)
           {
-            _mirrorCalibedHeadPos = new Vector3(convertedPos[0], convertedPos[1], convertedPos[2]);
+            _mirrorCalibedHeadPos = new Vector3(firstMirrorCalibConvertedPos[0], firstMirrorCalibConvertedPos[1], firstMirrorCalibConvertedPos[2]);
             Debug.Log("金曜_mirrorCalibedHeadPos" + _mirrorCalibedHeadPos);
           }
 
@@ -927,7 +1035,7 @@ namespace Mediapipe.Unity
                 //新処理
                 _movedYPos = _mirrorCalibedUpPos.y - (Math.Abs((_mirrorCalibedUpPos.y - _mirrorCalibedHeadPos.y) * (_eyeGazeCalibedUpPos.y - _eyeGazeCalibedDownPos.y) / (_mirrorCalibedUpPos.y - _mirrorCalibedDownPos.y)))  ;
 
-                _landmarkListAnnotation[i].transform.position = new Vector3(convertedPos.x, _movedYPos, convertedPos.z);
+                _landmarkListAnnotation[i].transform.position = new Vector3(firstMirrorCalibConvertedPos.x, _movedYPos, firstMirrorCalibConvertedPos.z);
                 _eyeGazeCalibedHeadPos = _landmarkListAnnotation[i].transform.position;
                 Debug.Log("金曜_eyeGazeCalibedHeadPos" + _eyeGazeCalibedHeadPos);
               }
@@ -939,7 +1047,7 @@ namespace Mediapipe.Unity
 
                 float dist = Math.Abs(_movedYPos - _mirrorCalibedHeadPos.y);
 
-                _landmarkListAnnotation[i].transform.position = new Vector3(convertedPos[0], convertedPos[1] - dist, convertedPos[2]);
+                _landmarkListAnnotation[i].transform.position = new Vector3(firstMirrorCalibConvertedPos[0], firstMirrorCalibConvertedPos[1] - dist, firstMirrorCalibConvertedPos[2]);
               }
             }
           }

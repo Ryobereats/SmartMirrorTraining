@@ -27,6 +27,9 @@ public class CoinManager : MonoBehaviour
   [SerializeField]
   private GameObject glassesImage;
 
+  //2023/10/19(木)追加
+  [SerializeField] private GameObject _MainCanvas;
+
   public float consecutiveBonus { get; private set; } = 0.43f;
   private float coinRadius = 0.025f;
 
@@ -51,6 +54,12 @@ public class CoinManager : MonoBehaviour
   void LateUpdate()
   {
     transform.Rotate(new Vector3(0, 0, 5));
+
+    if(transform.position.z < _MainCanvas.transform.position.z)
+    {
+      transform.parent = null;
+      transform.position += new Vector3(Time.deltaTime * _gameManager.squat_speed, 0, 0);
+    }
 
     //if (_saveParameter.TrainingTypes != 4)
     //{
